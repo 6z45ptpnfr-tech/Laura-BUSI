@@ -1,0 +1,1312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Retail Sales &amp; Expense Predictive Analytics Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  :root{
+    --navy-950:#0b1424; --navy-900:#0f1b2d; --navy-800:#142235; --navy-700:#1c2f47;
+    --slate-600:#4b5c72; --slate-500:#647border; --slate-400:#8695ab; --slate-200:#dde3ec; --slate-100:#eef1f6; --slate-50:#f7f9fc;
+    --blue-600:#2857c9; --blue-500:#3b6bd8; --blue-100:#e4ecfd;
+    --green-600:#0f9d63; --green-100:#e1f8ee;
+    --red-600:#d0392c; --red-100:#fdeceb;
+    --amber-600:#c07a12; --amber-100:#fdf2df;
+    --purple-600:#7b4fd6;
+    --border:#e3e8f0;
+    --card-bg:#ffffff;
+    --page-bg:#f4f6fa;
+    color-scheme: light;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:0; background:var(--page-bg); color:var(--navy-950);
+    font-family:'Inter',system-ui,-apple-system,sans-serif; font-size:14px; line-height:1.5;
+  }
+  h1,h2,h3,h4{margin:0; font-family:'Inter',sans-serif;}
+  .wrap{max-width:1400px; margin:0 auto; padding:0 20px;}
+  /* Header */
+  header.topbar{
+    background:linear-gradient(135deg,var(--navy-950),var(--navy-800));
+    color:#fff; padding:22px 0; border-bottom:3px solid var(--blue-600);
+  }
+  header.topbar .wrap{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px;}
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand .logo{
+    width:44px; height:44px; border-radius:10px; background:linear-gradient(135deg,var(--blue-500),var(--purple-600));
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; flex-shrink:0;
+  }
+  .brand h1{font-size:19px; font-weight:800; letter-spacing:.2px;}
+  .brand p{margin:2px 0 0; font-size:12px; color:#b8c4d8;}
+  .upload-zone{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .upload-btn{
+    background:#fff; color:var(--navy-900); border:none; padding:10px 18px; border-radius:8px; font-weight:700;
+    font-size:13px; cursor:pointer; transition:.15s; display:flex; align-items:center; gap:8px;
+  }
+  .upload-btn:hover{background:var(--slate-100); transform:translateY(-1px);}
+  #fileInput{display:none;}
+  .status-pill{
+    font-size:12px; font-weight:600; padding:6px 12px; border-radius:20px; background:rgba(255,255,255,.08);
+    color:#cfd9ea; border:1px solid rgba(255,255,255,.15); display:flex; align-items:center; gap:6px;
+  }
+  .status-dot{width:8px; height:8px; border-radius:50%; background:#8695ab;}
+  .status-pill.ok .status-dot{background:#25d18a;}
+  .status-pill.ok{color:#bdf5dc; border-color:rgba(37,209,138,.35); background:rgba(37,209,138,.1);}
+
+  /* Nav */
+  nav.tabs{
+    position:sticky; top:0; z-index:40; background:#fff; border-bottom:1px solid var(--border);
+    box-shadow:0 2px 6px rgba(15,27,45,.04);
+  }
+  nav.tabs .wrap{display:flex; gap:2px; overflow-x:auto; scrollbar-width:none;}
+  nav.tabs .wrap::-webkit-scrollbar{display:none;}
+  nav.tabs a{
+    white-space:nowrap; padding:14px 16px; font-size:13px; font-weight:600; color:var(--slate-600);
+    text-decoration:none; border-bottom:3px solid transparent; transition:.15s;
+  }
+  nav.tabs a:hover{color:var(--blue-600);}
+  nav.tabs a.active{color:var(--blue-600); border-bottom-color:var(--blue-600);}
+
+  main{padding-bottom:60px;}
+  section{padding:30px 0 6px;}
+  .section-head{margin-bottom:18px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
+  .section-head .tag{
+    font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--blue-600);
+    background:var(--blue-100); padding:3px 9px; border-radius:5px;
+  }
+  .section-head h2{font-size:21px; font-weight:800; color:var(--navy-950);}
+  .section-sub{color:var(--slate-600); font-size:13px; margin-top:4px;}
+
+  /* Empty state */
+  #emptyState{
+    max-width:640px; margin:70px auto; text-align:center; background:#fff; border:1px solid var(--border);
+    border-radius:16px; padding:48px 36px; box-shadow:0 10px 30px rgba(15,27,45,.06);
+  }
+  #emptyState .icon{font-size:40px; margin-bottom:14px;}
+  #emptyState h2{font-size:20px; margin-bottom:8px;}
+  #emptyState p{color:var(--slate-600); font-size:13.5px; margin-bottom:22px;}
+  #emptyState .upload-btn{background:var(--blue-600); color:#fff; padding:12px 26px; font-size:14px;}
+  #emptyState .upload-btn:hover{background:var(--blue-500);}
+  #dashboardContent{display:none;}
+  #dashboardContent.show{display:block;}
+
+  /* Cards / grid */
+  .grid{display:grid; gap:14px;}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-3{grid-template-columns:repeat(3,1fr);}
+  .grid-2{grid-template-columns:repeat(2,1fr);}
+  @media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:640px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:18px 20px;
+    box-shadow:0 1px 2px rgba(15,27,45,.03);
+  }
+  .kpi-card{position:relative; overflow:hidden;}
+  .kpi-label{font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--slate-500);}
+  .kpi-value{font-size:26px; font-weight:800; margin-top:6px; color:var(--navy-950); letter-spacing:-.3px;}
+  .kpi-sub{font-size:12px; color:var(--slate-500); margin-top:5px;}
+  .badge{
+    display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; padding:3px 9px;
+    border-radius:20px; margin-top:8px;
+  }
+  .badge.good{background:var(--green-100); color:var(--green-600);}
+  .badge.bad{background:var(--red-100); color:var(--red-600);}
+  .badge.neutral{background:var(--amber-100); color:var(--amber-600);}
+  .kpi-accent{position:absolute; top:0; left:0; width:4px; height:100%;}
+  .kpi-card.blue .kpi-accent{background:var(--blue-600);}
+  .kpi-card.green .kpi-accent{background:var(--green-600);}
+  .kpi-card.red .kpi-accent{background:var(--red-600);}
+  .kpi-card.purple .kpi-accent{background:var(--purple-600);}
+
+  .chart-card{background:#fff; border:1px solid var(--border); border-radius:12px; padding:18px 20px;}
+  .chart-card h3{font-size:14.5px; font-weight:700; margin-bottom:2px;}
+  .chart-card .chart-note{font-size:12px; color:var(--slate-500); margin-bottom:12px;}
+  .chart-wrap{position:relative; height:300px;}
+  .chart-wrap.tall{height:340px;}
+
+  table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
+  table.data-table th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--slate-500);
+    padding:8px 10px; border-bottom:2px solid var(--border); font-weight:700;
+  }
+  table.data-table td{padding:9px 10px; border-bottom:1px solid var(--slate-100);}
+  table.data-table tr:hover td{background:var(--slate-50);}
+  .pill-sm{font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:20px;}
+  .pill-sm.good{background:var(--green-100); color:var(--green-600);}
+  .pill-sm.bad{background:var(--red-100); color:var(--red-600);}
+
+  .stat-table td:first-child{color:var(--slate-600); font-weight:600;}
+  .stat-table td:last-child{text-align:right; font-weight:700; font-variant-numeric:tabular-nums;}
+
+  .btn-toggle-group{display:flex; gap:6px; flex-wrap:wrap;}
+  .btn-toggle{
+    background:var(--slate-100); border:1px solid var(--border); color:var(--slate-600); font-size:12.5px;
+    font-weight:600; padding:6px 14px; border-radius:8px; cursor:pointer; transition:.15s;
+  }
+  .btn-toggle.active{background:var(--blue-600); color:#fff; border-color:var(--blue-600);}
+  .btn-toggle:hover:not(.active){background:var(--slate-200);}
+
+  /* Sliders */
+  .slider-block{margin-bottom:20px;}
+  .slider-block:last-child{margin-bottom:0;}
+  .slider-label-row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
+  .slider-label-row .name{font-weight:700; font-size:13px;}
+  .slider-label-row .val{font-weight:800; font-size:14px; color:var(--blue-600); font-variant-numeric:tabular-nums;}
+  input[type=range]{
+    width:100%; -webkit-appearance:none; height:6px; border-radius:4px; background:var(--slate-200); outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--blue-600); cursor:pointer;
+    border:3px solid #fff; box-shadow:0 0 0 1px var(--blue-600);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:18px; height:18px; border-radius:50%; background:var(--blue-600); cursor:pointer; border:3px solid #fff;
+    box-shadow:0 0 0 1px var(--blue-600);
+  }
+  .reset-btn{
+    background:var(--navy-900); color:#fff; border:none; padding:9px 16px; border-radius:8px; font-weight:700;
+    font-size:12.5px; cursor:pointer; margin-top:6px;
+  }
+  .reset-btn:hover{background:var(--navy-800);}
+
+  .rec-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+  .rec-list li{
+    display:flex; gap:12px; align-items:flex-start; background:var(--slate-50); border:1px solid var(--border);
+    border-left:4px solid var(--blue-600); border-radius:10px; padding:13px 16px; font-size:13.3px;
+  }
+  .rec-list li.urgent{border-left-color:var(--red-600);}
+  .rec-list li.positive{border-left-color:var(--green-600);}
+  .rec-list li .rec-icon{font-size:16px; flex-shrink:0;}
+  .rec-list li b{color:var(--navy-950);}
+
+  .methodology{background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px 22px; font-size:12.5px; color:var(--slate-600);}
+  .methodology h4{font-size:13px; color:var(--navy-950); margin-bottom:8px;}
+  .methodology ul{margin:6px 0 14px 18px; padding:0;}
+  .methodology li{margin-bottom:4px;}
+
+  footer{padding:26px 0 40px; text-align:center; color:var(--slate-500); font-size:12px;}
+
+  .flex-between{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+
+  .metric-mini-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px;}
+  @media(max-width:700px){.metric-mini-grid{grid-template-columns:repeat(2,1fr);}}
+  .metric-mini{background:var(--slate-50); border:1px solid var(--border); border-radius:10px; padding:12px 14px; text-align:center;}
+  .metric-mini .mm-label{font-size:11px; color:var(--slate-500); font-weight:700; text-transform:uppercase; letter-spacing:.04em;}
+  .metric-mini .mm-value{font-size:19px; font-weight:800; margin-top:4px;}
+
+  .coef-table td:nth-child(2), .coef-table th:nth-child(2){text-align:right; font-variant-numeric:tabular-nums;}
+  .loading-overlay{
+    position:fixed; inset:0; background:rgba(11,20,36,.75); z-index:200; display:flex; align-items:center;
+    justify-content:center; color:#fff; font-weight:700; font-size:15px; flex-direction:column; gap:14px;
+  }
+  .spinner{width:38px; height:38px; border-radius:50%; border:4px solid rgba(255,255,255,.25); border-top-color:#fff; animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .hidden{display:none !important;}
+  .errbox{background:var(--red-100); color:var(--red-600); border:1px solid #f6c6c1; padding:12px 16px; border-radius:8px; font-size:13px; margin-top:14px;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">R</div>
+      <div>
+        <h1>Retail Sales &amp; Expense Predictive Analytics</h1>
+        <p>Executive Dashboard · Canada Weekly Operations</p>
+      </div>
+    </div>
+    <div class="upload-zone">
+      <span id="statusPill" class="status-pill"><span class="status-dot"></span><span id="statusText">No data loaded</span></span>
+      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+        &#128193; Upload CSV
+      </button>
+      <input type="file" id="fileInput" accept=".csv" />
+    </div>
+  </div>
+</header>
+
+<nav class="tabs" id="tabNav">
+  <div class="wrap">
+    <a href="#kpi" class="nav-link">Executive KPIs</a>
+    <a href="#past" class="nav-link">Past</a>
+    <a href="#diagnostic" class="nav-link">Diagnostic</a>
+    <a href="#predictive" class="nav-link">Predictive</a>
+    <a href="#uncertainty" class="nav-link">Uncertainty</a>
+    <a href="#decision" class="nav-link">Decision · What-If</a>
+    <a href="#recommendation" class="nav-link">Recommendations</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <div id="emptyState">
+    <div class="icon">&#128202;</div>
+    <h2>Upload your retail dataset to begin</h2>
+    <p>Load <b>Retail_Sales_Expense_Predictive_Analytics (1).csv</b> (or any CSV with the same weekly store/category schema) to generate the full predictive storytelling dashboard — descriptive stats, diagnostics, regression forecasts, confidence intervals, and interactive what-if scenarios.</p>
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Choose CSV File</button>
+    <div id="errArea"></div>
+  </div>
+
+  <div id="dashboardContent">
+
+    <!-- ================= KPI ================= -->
+    <section id="kpi">
+      <div class="section-head"><span class="tag">Executive Summary</span><h2>Key Performance Indicators</h2></div>
+      <div class="section-sub" id="kpiPeriodNote" style="margin-bottom:16px;"></div>
+
+      <div class="grid grid-4" id="kpiSalesRow"></div>
+      <div class="grid grid-4" id="kpiExpenseRow" style="margin-top:14px;"></div>
+      <div class="grid grid-4" id="kpiProfitRow" style="margin-top:14px;"></div>
+    </section>
+
+    <!-- ================= PAST ================= -->
+    <section id="past">
+      <div class="section-head"><span class="tag">1 · Past</span><h2>What happened?</h2></div>
+      <div class="section-sub" style="margin-bottom:16px;">Descriptive statistics and historical trend lines across the full observation window.</div>
+
+      <div class="grid grid-2">
+        <div class="chart-card">
+          <h3>Weekly Sales Revenue — Actual vs Budget vs 4-Wk Rolling Avg</h3>
+          <div class="chart-note">Solid = actual, dashed = budget, dotted = rolling average</div>
+          <div class="chart-wrap"><canvas id="chartSalesHistory"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Weekly Total Expense — Actual vs Budget vs 4-Wk Rolling Avg</h3>
+          <div class="chart-note">Solid = actual, dashed = budget, dotted = rolling average</div>
+          <div class="chart-wrap"><canvas id="chartExpenseHistory"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:14px;">
+        <div class="chart-card">
+          <h3>Sales Revenue — Descriptive Statistics</h3>
+          <div class="chart-note">Weekly network-wide totals, full observation period</div>
+          <table class="data-table stat-table" id="statTableSales"></table>
+        </div>
+        <div class="chart-card">
+          <h3>Total Expense — Descriptive Statistics</h3>
+          <div class="chart-note">Weekly network-wide totals, full observation period</div>
+          <table class="data-table stat-table" id="statTableExpense"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= DIAGNOSTIC ================= -->
+    <section id="diagnostic">
+      <div class="section-head"><span class="tag">2 · Diagnostic</span><h2>Why did it happen?</h2></div>
+      <div class="section-sub" style="margin-bottom:16px;">Variance analysis and performance segmentation across stores, regions, categories, and formats.</div>
+
+      <div class="chart-card">
+        <div class="flex-between">
+          <div>
+            <h3>Sales Variance % vs Budget — by Segment</h3>
+            <div class="chart-note">Green = favourable (ahead of budget), red = unfavourable (behind budget)</div>
+          </div>
+          <div class="btn-toggle-group" id="diagDimToggle">
+            <button class="btn-toggle active" data-dim="Store">By Store</button>
+            <button class="btn-toggle" data-dim="Region">By Region</button>
+            <button class="btn-toggle" data-dim="Category">By Category</button>
+            <button class="btn-toggle" data-dim="Format">By Store Format</button>
+          </div>
+        </div>
+        <div class="chart-wrap tall"><canvas id="chartDiagnostic"></canvas></div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:14px;">
+        <div class="chart-card">
+          <h3>Top Performers <span class="chart-note">(highest sales variance %)</span></h3>
+          <table class="data-table" id="tableTopPerformers"></table>
+        </div>
+        <div class="chart-card">
+          <h3>Bottom Performers <span class="chart-note">(lowest sales variance %)</span></h3>
+          <table class="data-table" id="tableBottomPerformers"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PREDICTIVE ================= -->
+    <section id="predictive">
+      <div class="section-head"><span class="tag">3 · Predictive</span><h2>What is likely to happen next?</h2></div>
+      <div class="section-sub" style="margin-bottom:16px;">Multiple regression models driven by traffic, conversion, marketing, discounting, labour and COGS — projected 12 weeks forward.</div>
+
+      <div class="grid grid-2">
+        <div class="chart-card">
+          <h3>Sales Revenue Forecast — Next 12 Weeks</h3>
+          <div class="chart-note">Shaded band = 95% prediction interval</div>
+          <div class="chart-wrap tall"><canvas id="chartSalesForecast"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Total Expense Forecast — Next 12 Weeks</h3>
+          <div class="chart-note">Shaded band = 95% prediction interval</div>
+          <div class="chart-wrap tall"><canvas id="chartExpenseForecast"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:14px;">
+        <div class="chart-card">
+          <h3>Sales Regression — Driver Coefficients</h3>
+          <div class="chart-note">Effect of a 1-unit increase in each driver on weekly network sales ($), holding others constant</div>
+          <table class="data-table coef-table" id="coefTableSales"></table>
+        </div>
+        <div class="chart-card">
+          <h3>Total Expense Regression — Driver Coefficients</h3>
+          <div class="chart-note">Effect of a 1-unit increase in each driver on weekly network expense ($), holding others constant</div>
+          <table class="data-table coef-table" id="coefTableExpense"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= UNCERTAINTY ================= -->
+    <section id="uncertainty">
+      <div class="section-head"><span class="tag">4 · Uncertainty</span><h2>How confident are we?</h2></div>
+      <div class="section-sub" style="margin-bottom:16px;">Out-of-sample validation on a held-out 20% test window, plus prediction intervals for the forward forecast.</div>
+
+      <div class="grid grid-2">
+        <div class="chart-card">
+          <h3>Sales Model Validation</h3>
+          <div class="metric-mini-grid">
+            <div class="metric-mini"><div class="mm-label">R² (test)</div><div class="mm-value" id="mmSalesR2"></div></div>
+            <div class="metric-mini"><div class="mm-label">RMSE (test)</div><div class="mm-value" id="mmSalesRMSE"></div></div>
+            <div class="metric-mini"><div class="mm-label">MAPE (test)</div><div class="mm-value" id="mmSalesMAPE"></div></div>
+            <div class="metric-mini"><div class="mm-label">Train R²</div><div class="mm-value" id="mmSalesR2Train"></div></div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Expense Model Validation</h3>
+          <div class="metric-mini-grid">
+            <div class="metric-mini"><div class="mm-label">R² (test)</div><div class="mm-value" id="mmExpR2"></div></div>
+            <div class="metric-mini"><div class="mm-label">RMSE (test)</div><div class="mm-value" id="mmExpRMSE"></div></div>
+            <div class="metric-mini"><div class="mm-label">MAPE (test)</div><div class="mm-value" id="mmExpMAPE"></div></div>
+            <div class="metric-mini"><div class="mm-label">Train R²</div><div class="mm-value" id="mmExpR2Train"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:14px;">
+        <div class="chart-card">
+          <h3>Actual vs Predicted — Held-Out Test Weeks</h3>
+          <div class="chart-note">Points closer to the diagonal indicate a better fit</div>
+          <div class="chart-wrap"><canvas id="chartActualPredicted"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>12-Week Forecast — Numeric Detail</h3>
+          <div class="chart-note">Point forecast with 95% prediction interval, $ thousands</div>
+          <div style="max-height:300px; overflow:auto;">
+            <table class="data-table" id="tableForecastDetail"></table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= DECISION / WHAT-IF ================= -->
+    <section id="decision">
+      <div class="section-head"><span class="tag">5 · Decision</span><h2>What happens if management changes something?</h2></div>
+      <div class="section-sub" style="margin-bottom:16px;">Move the levers below — the model recalculates sales, expenses, profit and success probabilities in real time, versus a baseline (average of the last 4 observed weeks).</div>
+
+      <div class="grid" style="grid-template-columns:1fr 1.3fr; gap:14px;">
+        <div class="chart-card">
+          <div class="flex-between"><h3>Business Drivers</h3><button class="reset-btn" id="resetSliders">Reset to Baseline</button></div>
+          <div id="sliderContainer"></div>
+        </div>
+
+        <div>
+          <div class="grid grid-2">
+            <div class="card kpi-card blue"><div class="kpi-accent"></div><div class="kpi-label">Scenario Sales</div><div class="kpi-value" id="wiSales"></div><div class="kpi-sub" id="wiSalesDelta"></div></div>
+            <div class="card kpi-card red"><div class="kpi-accent"></div><div class="kpi-label">Scenario Expense</div><div class="kpi-value" id="wiExpense"></div><div class="kpi-sub" id="wiExpenseDelta"></div></div>
+            <div class="card kpi-card green"><div class="kpi-accent"></div><div class="kpi-label">Scenario Operating Profit</div><div class="kpi-value" id="wiProfit"></div><div class="kpi-sub" id="wiProfitDelta"></div></div>
+            <div class="card kpi-card purple"><div class="kpi-accent"></div><div class="kpi-label">Scenario Margin</div><div class="kpi-value" id="wiMargin"></div><div class="kpi-sub" id="wiMarginDelta"></div></div>
+          </div>
+          <div class="grid grid-2" style="margin-top:14px;">
+            <div class="card"><div class="kpi-label">P(Sales ≥ Budget Target)</div><div class="kpi-value" id="wiProbSales"></div><div class="kpi-sub">vs. trailing 4-week budget run-rate</div></div>
+            <div class="card"><div class="kpi-label">P(Expense ≤ Budget Target)</div><div class="kpi-value" id="wiProbExpense"></div><div class="kpi-sub">vs. trailing 4-week budget run-rate</div></div>
+          </div>
+          <div class="chart-card" style="margin-top:14px;">
+            <h3>Scenario vs Baseline</h3>
+            <div class="chart-wrap" style="height:220px;"><canvas id="chartWhatIf"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= RECOMMENDATION ================= -->
+    <section id="recommendation">
+      <div class="section-head"><span class="tag">6 · Recommendation</span><h2>What should management consider doing?</h2></div>
+      <div class="section-sub" style="margin-bottom:16px;">Automatically generated from current KPIs, diagnostics, model output and your what-if scenario — updates live as you move the sliders.</div>
+      <div class="card">
+        <ul class="rec-list" id="recList"></ul>
+      </div>
+    </section>
+
+    <div class="methodology" style="margin-top:34px;">
+      <h4>Methodology &amp; Assumptions</h4>
+      <ul>
+        <li>All figures are aggregated network-wide (across all stores and categories) at weekly granularity unless otherwise labelled.</li>
+        <li>Sales and Total Expense are each modelled with an ordinary least squares multiple regression fitted on 80% of weeks (chronological) and validated on the remaining held-out 20%.</li>
+        <li>Sales drivers: total foot traffic, average conversion rate, total marketing spend, average discount rate, average transaction value, consumer confidence index, holiday flag.</li>
+        <li>Expense drivers: total labour hours, average hourly wage, average COGS rate, total marketing spend, modelled sales revenue, total rent expense, total utilities expense.</li>
+        <li>12-week forward driver values are extrapolated with independent linear trend lines per driver; holiday flags are inferred from historically holiday-flagged week numbers.</li>
+        <li>Prediction intervals use ±1.96 × held-out RMSE (approximate 95% interval under a normal error assumption).</li>
+        <li>What-if scenarios apply slider-adjusted drivers to the same fitted regression coefficients; non-slider drivers are held at their trailing 4-week average.</li>
+        <li>Success probabilities use a normal approximation on the distance between the scenario/forecast value and the target, scaled by held-out RMSE.</li>
+      </ul>
+    </div>
+  </div>
+</main>
+
+<footer>Retail Sales &amp; Expense Predictive Analytics Dashboard · Generated for internal management use</footer>
+
+<script>
+Chart.register(window['chartjs-plugin-annotation']);
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.color = '#4b5c72';
+
+/* ============================================================
+   UTILITIES
+============================================================ */
+const fmtCAD = new Intl.NumberFormat('en-CA', {style:'currency', currency:'CAD', maximumFractionDigits:0});
+const fmtCAD1 = new Intl.NumberFormat('en-CA', {style:'currency', currency:'CAD', maximumFractionDigits:1});
+function fmtCompact(v){
+  const sign = v < 0 ? '-' : '';
+  const abs = Math.abs(v);
+  if (abs >= 1e9) return sign + '$' + (abs/1e9).toFixed(2) + 'B';
+  if (abs >= 1e6) return sign + '$' + (abs/1e6).toFixed(2) + 'M';
+  if (abs >= 1e3) return sign + '$' + (abs/1e3).toFixed(1) + 'K';
+  return sign + '$' + abs.toFixed(0);
+}
+function fmtPct(v, digits){ digits = digits===undefined?1:digits; return (v>=0?'+':'') + v.toFixed(digits) + '%'; }
+function fmtProb(p){ if(p<1) return '<1%'; if(p>99) return '>99%'; return p.toFixed(0)+'%'; }
+function fmtNum(v){ return new Intl.NumberFormat('en-CA').format(Math.round(v)); }
+const mean = a => a.reduce((s,x)=>s+x,0)/a.length;
+function median(a){ const s=[...a].sort((x,y)=>x-y); const n=s.length; return n%2? s[(n-1)/2] : (s[n/2-1]+s[n/2])/2; }
+function stddev(a){ const m=mean(a); return Math.sqrt(mean(a.map(x=>(x-m)**2))); }
+
+function erf(x){
+  const s = x<0?-1:1; x=Math.abs(x);
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const t=1/(1+p*x);
+  const y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return s*y;
+}
+function normCDF(z){ return 0.5*(1+erf(z/Math.SQRT2)); }
+
+/* Gaussian elimination solver for A*x = b */
+function solveLinear(A, b){
+  const n = A.length;
+  const M = A.map((row,i)=>[...row, b[i]]);
+  for(let col=0; col<n; col++){
+    let pivot=col;
+    for(let r=col+1;r<n;r++) if(Math.abs(M[r][col])>Math.abs(M[pivot][col])) pivot=r;
+    [M[col],M[pivot]]=[M[pivot],M[col]];
+    if(Math.abs(M[col][col])<1e-9) continue;
+    for(let r=0;r<n;r++){
+      if(r===col) continue;
+      const f = M[r][col]/M[col][col];
+      for(let c=col;c<=n;c++) M[r][c]-=f*M[col][c];
+    }
+  }
+  return M.map((row,i)=> row[n] / (row[i] || 1e-9));
+}
+function ols(X, y){
+  const nFeat = X[0].length;
+  const XtX = Array.from({length:nFeat},()=>new Array(nFeat).fill(0));
+  const Xty = new Array(nFeat).fill(0);
+  for(let i=0;i<X.length;i++){
+    for(let a=0;a<nFeat;a++){
+      Xty[a]+=X[i][a]*y[i];
+      for(let b=0;b<nFeat;b++) XtX[a][b]+=X[i][a]*X[i][b];
+    }
+  }
+  return solveLinear(XtX, Xty);
+}
+function predictRow(beta, xRow){ return beta.reduce((s,b,i)=>s+b*xRow[i],0); }
+function regressionMetrics(yTrue,yPred){
+  const n=yTrue.length; const my=mean(yTrue);
+  let ssRes=0, ssTot=0, sape=0;
+  for(let i=0;i<n;i++){
+    const e=yTrue[i]-yPred[i];
+    ssRes+=e*e; ssTot+=(yTrue[i]-my)**2; sape+=Math.abs(e/yTrue[i]);
+  }
+  return { r2: 1-ssRes/ssTot, rmse: Math.sqrt(ssRes/n), mape: (sape/n)*100 };
+}
+function linTrendFn(values){
+  const X = values.map((v,i)=>[1,i]);
+  const beta = ols(X, values);
+  return t => beta[0]+beta[1]*t;
+}
+function rollingAvg(arr, window){
+  return arr.map((_,i)=>{
+    const start=Math.max(0,i-window+1);
+    const slice=arr.slice(start,i+1);
+    return mean(slice);
+  });
+}
+
+/* ============================================================
+   STATE
+============================================================ */
+const STATE = {
+  raw: null, weekly: null, groups: null,
+  models: {}, forecast: null,
+  baseline: null, whatif: {}
+};
+
+/* ============================================================
+   DATA LOADING
+============================================================ */
+const fileInput = document.getElementById('fileInput');
+fileInput.addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(f) loadFile(f);
+});
+['dragover','drop'].forEach(evt=>{
+  document.body.addEventListener(evt, e=>{ e.preventDefault(); });
+});
+document.body.addEventListener('drop', e=>{
+  if(e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+function showError(msg){
+  const el = document.getElementById('errArea');
+  el.innerHTML = '<div class="errbox">'+msg+'</div>';
+}
+function clearError(){ document.getElementById('errArea').innerHTML=''; }
+
+function loadFile(file){
+  clearError();
+  showLoading(true);
+  Papa.parse(file, {
+    header:true, dynamicTyping:true, skipEmptyLines:true,
+    complete: res=>{
+      showLoading(false);
+      try{
+        processData(res.data, file.name);
+      }catch(err){
+        console.error(err);
+        showError('Could not process this file: '+err.message+'. Please confirm it matches the expected retail schema.');
+      }
+    },
+    error: err=>{
+      showLoading(false);
+      showError('Failed to parse CSV: '+err.message);
+    }
+  });
+}
+function showLoading(on){
+  let ov = document.getElementById('loadOverlay');
+  if(on){
+    if(!ov){
+      ov = document.createElement('div'); ov.id='loadOverlay'; ov.className='loading-overlay';
+      ov.innerHTML = '<div class="spinner"></div><div>Processing dataset…</div>';
+      document.body.appendChild(ov);
+    }
+  } else if(ov){ ov.remove(); }
+}
+
+const REQUIRED_COLS = ['Week_Start','Sales_Revenue','Sales_Budget','Total_Expense','Expense_Budget'];
+function processData(rows, filename){
+  rows = rows.filter(r=>r && r.Week_Start);
+  if(rows.length===0) throw new Error('No usable rows found');
+  const cols = Object.keys(rows[0]);
+  const missing = REQUIRED_COLS.filter(c=>!cols.includes(c));
+  if(missing.length) throw new Error('Missing expected columns: '+missing.join(', '));
+
+  STATE.raw = rows;
+  STATE.weekly = weeklyAggregate(rows);
+  STATE.groups = buildGroups(rows);
+  buildModels();
+  buildForecast();
+  buildBaseline();
+
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('dashboardContent').classList.add('show');
+  const pill = document.getElementById('statusPill');
+  pill.classList.add('ok');
+  document.getElementById('statusText').textContent = rows.length.toLocaleString()+' rows · '+STATE.weekly.length+' weeks loaded ('+filename+')';
+
+  renderAll();
+}
+
+function weeklyAggregate(rows){
+  const map = new Map();
+  for(const r of rows){
+    const k = r.Week_Start;
+    if(!map.has(k)){
+      map.set(k, {
+        Week_Start:k, Year:r.Year, Week_Number:r.Week_Number,
+        Foot_Traffic:0, Marketing_Spend:0, Transactions:0,
+        Sales_Revenue:0, Sales_Budget:0, COGS_Expense:0, Labor_Expense:0,
+        Shipping_Expense:0, Returns_Expense:0, Rent_Expense:0, Utilities_Expense:0,
+        Total_Expense:0, Expense_Budget:0, Labor_Hours:0, Holiday_Flag:0,
+        _conv:[], _disc:[], _atv:[], _cci:[], _cpi:[], _wage:[], _cogsr:[], n:0
+      });
+    }
+    const w = map.get(k);
+    w.Foot_Traffic += num(r.Foot_Traffic); w.Marketing_Spend += num(r.Marketing_Spend);
+    w.Transactions += num(r.Transactions); w.Sales_Revenue += num(r.Sales_Revenue);
+    w.Sales_Budget += num(r.Sales_Budget); w.COGS_Expense += num(r.COGS_Expense);
+    w.Labor_Expense += num(r.Labor_Expense); w.Shipping_Expense += num(r.Shipping_Expense);
+    w.Returns_Expense += num(r.Returns_Expense); w.Rent_Expense += num(r.Rent_Expense);
+    w.Utilities_Expense += num(r.Utilities_Expense); w.Total_Expense += num(r.Total_Expense);
+    w.Expense_Budget += num(r.Expense_Budget); w.Labor_Hours += num(r.Labor_Hours);
+    w._conv.push(num(r.Conversion_Rate)); w._disc.push(num(r.Discount_Rate));
+    w._atv.push(num(r.Avg_Transaction_Value)); w._cci.push(num(r.Consumer_Confidence_Index));
+    w._cpi.push(num(r.Competitor_Price_Index)); w._wage.push(num(r.Avg_Hourly_Wage));
+    w._cogsr.push(num(r.COGS_Rate));
+    w.Holiday_Flag = Math.max(w.Holiday_Flag, num(r.Holiday_Flag));
+    w.n++;
+  }
+  const arr = Array.from(map.values());
+  for(const w of arr){
+    w.Conversion_Rate = mean(w._conv); w.Discount_Rate = mean(w._disc);
+    w.Avg_Transaction_Value = mean(w._atv); w.Consumer_Confidence_Index = mean(w._cci);
+    w.Competitor_Price_Index = mean(w._cpi); w.Avg_Hourly_Wage = mean(w._wage);
+    w.COGS_Rate = mean(w._cogsr);
+    w.Operating_Profit = w.Sales_Revenue - w.Total_Expense;
+    w.Sales_Variance_Pct = (w.Sales_Revenue - w.Sales_Budget)/w.Sales_Budget*100;
+    w.Expense_Variance_Pct = (w.Total_Expense - w.Expense_Budget)/w.Expense_Budget*100;
+  }
+  arr.sort((a,b)=> new Date(a.Week_Start) - new Date(b.Week_Start));
+  arr.forEach((w,i)=>w.t=i);
+  return arr;
+}
+function num(v){ return (typeof v === 'number' && !isNaN(v)) ? v : 0; }
+
+function buildGroups(rows){
+  function groupBy(keyFn){
+    const map = new Map();
+    for(const r of rows){
+      const k = keyFn(r);
+      if(!map.has(k)) map.set(k, {key:k, Sales_Revenue:0, Sales_Budget:0, Total_Expense:0, Expense_Budget:0});
+      const g = map.get(k);
+      g.Sales_Revenue += num(r.Sales_Revenue); g.Sales_Budget += num(r.Sales_Budget);
+      g.Total_Expense += num(r.Total_Expense); g.Expense_Budget += num(r.Expense_Budget);
+    }
+    const arr = Array.from(map.values());
+    arr.forEach(g=>{
+      g.Sales_Variance_Pct = (g.Sales_Revenue-g.Sales_Budget)/g.Sales_Budget*100;
+      g.Expense_Variance_Pct = (g.Total_Expense-g.Expense_Budget)/g.Expense_Budget*100;
+      g.Operating_Profit = g.Sales_Revenue - g.Total_Expense;
+    });
+    arr.sort((a,b)=>b.Sales_Variance_Pct-a.Sales_Variance_Pct);
+    return arr;
+  }
+  return {
+    Store: groupBy(r=>r.Store_ID+' — '+r.City),
+    Region: groupBy(r=>r.Region),
+    Category: groupBy(r=>r.Category),
+    Format: groupBy(r=>r.Store_Format)
+  };
+}
+
+/* ============================================================
+   MODELS (regression)
+============================================================ */
+function buildSalesFeatures(w){
+  return [1, w.Foot_Traffic, w.Conversion_Rate, w.Marketing_Spend, w.Discount_Rate, w.Avg_Transaction_Value, w.Consumer_Confidence_Index, w.Holiday_Flag];
+}
+const SALES_FEATURE_NAMES = ['Intercept','Total Foot Traffic','Avg Conversion Rate','Total Marketing Spend ($)','Avg Discount Rate','Avg Transaction Value ($)','Consumer Confidence Index','Holiday Flag'];
+
+function buildExpenseFeatures(w, salesOverride){
+  return [1, w.Labor_Hours, w.Avg_Hourly_Wage, w.COGS_Rate, w.Marketing_Spend, salesOverride!==undefined?salesOverride:w.Sales_Revenue, w.Rent_Expense, w.Utilities_Expense];
+}
+const EXPENSE_FEATURE_NAMES = ['Intercept','Total Labour Hours','Avg Hourly Wage ($)','Avg COGS Rate','Total Marketing Spend ($)','Sales Revenue ($)','Total Rent Expense ($)','Total Utilities Expense ($)'];
+
+function buildModels(){
+  const weekly = STATE.weekly;
+  const nTrain = Math.max(10, Math.floor(weekly.length*0.8));
+  const train = weekly.slice(0, nTrain);
+  const test = weekly.slice(nTrain);
+
+  const XsTrain = train.map(buildSalesFeatures), ysTrain = train.map(w=>w.Sales_Revenue);
+  const betaSales = ols(XsTrain, ysTrain);
+  const XsTest = test.map(buildSalesFeatures), ysTest = test.map(w=>w.Sales_Revenue);
+  const predSalesTrain = XsTrain.map(x=>predictRow(betaSales,x));
+  const predSalesTest = XsTest.map(x=>predictRow(betaSales,x));
+
+  const XeTrain = train.map(w=>buildExpenseFeatures(w)), yeTrain = train.map(w=>w.Total_Expense);
+  const betaExpense = ols(XeTrain, yeTrain);
+  const XeTest = test.map(w=>buildExpenseFeatures(w)), yeTest = test.map(w=>w.Total_Expense);
+  const predExpTrain = XeTrain.map(x=>predictRow(betaExpense,x));
+  const predExpTest = XeTest.map(x=>predictRow(betaExpense,x));
+
+  STATE.models = {
+    sales: {
+      beta:betaSales,
+      trainMetrics: regressionMetrics(ysTrain, predSalesTrain),
+      testMetrics: test.length ? regressionMetrics(ysTest, predSalesTest) : regressionMetrics(ysTrain, predSalesTrain),
+      testActual: ysTest, testPred: predSalesTest, testWeeks: test
+    },
+    expense: {
+      beta:betaExpense,
+      trainMetrics: regressionMetrics(yeTrain, predExpTrain),
+      testMetrics: test.length ? regressionMetrics(yeTest, predExpTest) : regressionMetrics(yeTrain, predExpTrain),
+      testActual: yeTest, testPred: predExpTest, testWeeks: test
+    }
+  };
+}
+
+/* ============================================================
+   FORECAST (12 weeks forward)
+============================================================ */
+function buildForecast(){
+  const weekly = STATE.weekly;
+  const n = weekly.length;
+  const trendFns = {};
+  ['Foot_Traffic','Conversion_Rate','Marketing_Spend','Discount_Rate','Avg_Transaction_Value',
+   'Consumer_Confidence_Index','Labor_Hours','Avg_Hourly_Wage','COGS_Rate','Rent_Expense',
+   'Utilities_Expense','Sales_Budget','Expense_Budget'].forEach(key=>{
+    trendFns[key] = linTrendFn(weekly.map(w=>w[key]));
+  });
+
+  const holidayWeekNums = new Set(weekly.filter(w=>w.Holiday_Flag===1).map(w=>w.Week_Number));
+  const lastDate = new Date(weekly[n-1].Week_Start);
+  const lastWeekNum = weekly[n-1].Week_Number;
+
+  const HORIZON = 12;
+  const rows = [];
+  for(let i=1;i<=HORIZON;i++){
+    const t = n-1+i;
+    const date = new Date(lastDate.getTime() + i*7*24*3600*1000);
+    const weekNum = ((lastWeekNum + i - 1) % 52) + 1;
+    const w = {
+      t, Week_Start: date.toISOString().slice(0,10),
+      Foot_Traffic: trendFns.Foot_Traffic(t),
+      Conversion_Rate: trendFns.Conversion_Rate(t),
+      Marketing_Spend: trendFns.Marketing_Spend(t),
+      Discount_Rate: trendFns.Discount_Rate(t),
+      Avg_Transaction_Value: trendFns.Avg_Transaction_Value(t),
+      Consumer_Confidence_Index: trendFns.Consumer_Confidence_Index(t),
+      Labor_Hours: trendFns.Labor_Hours(t),
+      Avg_Hourly_Wage: trendFns.Avg_Hourly_Wage(t),
+      COGS_Rate: trendFns.COGS_Rate(t),
+      Rent_Expense: trendFns.Rent_Expense(t),
+      Utilities_Expense: trendFns.Utilities_Expense(t),
+      Sales_Budget: trendFns.Sales_Budget(t),
+      Expense_Budget: trendFns.Expense_Budget(t),
+      Holiday_Flag: holidayWeekNums.has(weekNum) ? 1 : 0
+    };
+    const salesHat = predictRow(STATE.models.sales.beta, buildSalesFeatures(w));
+    const expenseHat = predictRow(STATE.models.expense.beta, buildExpenseFeatures(w, salesHat));
+    w.Sales_Hat = salesHat;
+    w.Expense_Hat = expenseHat;
+    rows.push(w);
+  }
+  const rmseS = STATE.models.sales.testMetrics.rmse;
+  const rmseE = STATE.models.expense.testMetrics.rmse;
+  rows.forEach(w=>{
+    w.Sales_Lo = w.Sales_Hat - 1.96*rmseS; w.Sales_Hi = w.Sales_Hat + 1.96*rmseS;
+    w.Expense_Lo = w.Expense_Hat - 1.96*rmseE; w.Expense_Hi = w.Expense_Hat + 1.96*rmseE;
+  });
+  STATE.forecast = rows;
+}
+
+function buildBaseline(){
+  const weekly = STATE.weekly;
+  const last4 = weekly.slice(-4);
+  STATE.baseline = {
+    Foot_Traffic: mean(last4.map(w=>w.Foot_Traffic)),
+    Conversion_Rate: mean(last4.map(w=>w.Conversion_Rate)),
+    Marketing_Spend: mean(last4.map(w=>w.Marketing_Spend)),
+    Discount_Rate: mean(last4.map(w=>w.Discount_Rate)),
+    Avg_Transaction_Value: mean(last4.map(w=>w.Avg_Transaction_Value)),
+    Consumer_Confidence_Index: mean(last4.map(w=>w.Consumer_Confidence_Index)),
+    Labor_Hours: mean(last4.map(w=>w.Labor_Hours)),
+    Avg_Hourly_Wage: mean(last4.map(w=>w.Avg_Hourly_Wage)),
+    COGS_Rate: mean(last4.map(w=>w.COGS_Rate)),
+    Rent_Expense: mean(last4.map(w=>w.Rent_Expense)),
+    Utilities_Expense: mean(last4.map(w=>w.Utilities_Expense)),
+    Holiday_Flag: mean(last4.map(w=>w.Holiday_Flag)) >= 0.5 ? 1 : 0,
+    Sales_Budget: mean(last4.map(w=>w.Sales_Budget)),
+    Expense_Budget: mean(last4.map(w=>w.Expense_Budget)),
+    Sales_Revenue: mean(last4.map(w=>w.Sales_Revenue)),
+    Total_Expense: mean(last4.map(w=>w.Total_Expense))
+  };
+  STATE.whatif = {traffic:0, conversion:0, marketing:0, discount:0, labour:0, cogs:0};
+}
+
+function computeScenario(sliders){
+  const b = STATE.baseline;
+  const w = {
+    Foot_Traffic: b.Foot_Traffic*(1+sliders.traffic/100),
+    Conversion_Rate: b.Conversion_Rate*(1+sliders.conversion/100),
+    Marketing_Spend: b.Marketing_Spend*(1+sliders.marketing/100),
+    Discount_Rate: b.Discount_Rate*(1+sliders.discount/100),
+    Avg_Transaction_Value: b.Avg_Transaction_Value,
+    Consumer_Confidence_Index: b.Consumer_Confidence_Index,
+    Holiday_Flag: b.Holiday_Flag,
+    Labor_Hours: b.Labor_Hours*(1+sliders.labour/100),
+    Avg_Hourly_Wage: b.Avg_Hourly_Wage,
+    COGS_Rate: b.COGS_Rate*(1+sliders.cogs/100),
+    Rent_Expense: b.Rent_Expense,
+    Utilities_Expense: b.Utilities_Expense
+  };
+  const salesHat = predictRow(STATE.models.sales.beta, buildSalesFeatures(w));
+  const expenseHat = predictRow(STATE.models.expense.beta, buildExpenseFeatures(w, salesHat));
+  const profitHat = salesHat - expenseHat;
+  const rmseS = STATE.models.sales.testMetrics.rmse, rmseE = STATE.models.expense.testMetrics.rmse;
+  const probSales = normCDF((salesHat - b.Sales_Budget)/rmseS);
+  const probExpense = normCDF((b.Expense_Budget - expenseHat)/rmseE);
+  return { salesHat, expenseHat, profitHat, margin: profitHat/salesHat*100, probSales:probSales*100, probExpense:probExpense*100 };
+}
+
+/* ============================================================
+   RENDER — orchestrator
+============================================================ */
+function renderAll(){
+  renderKPIs();
+  renderPast();
+  renderDiagnostic('Store');
+  renderPredictive();
+  renderUncertainty();
+  renderSliders();
+  renderWhatIf();
+  renderRecommendations();
+}
+
+function kpiCard(label, value, sub, colorClass, badgeHtml){
+  return '<div class="card kpi-card '+colorClass+'"><div class="kpi-accent"></div>'+
+    '<div class="kpi-label">'+label+'</div><div class="kpi-value">'+value+'</div>'+
+    (sub?'<div class="kpi-sub">'+sub+'</div>':'')+(badgeHtml||'')+'</div>';
+}
+
+function renderKPIs(){
+  const weekly = STATE.weekly;
+  const totalSales = weekly.reduce((s,w)=>s+w.Sales_Revenue,0);
+  const totalSalesBudget = weekly.reduce((s,w)=>s+w.Sales_Budget,0);
+  const totalExpense = weekly.reduce((s,w)=>s+w.Total_Expense,0);
+  const totalExpenseBudget = weekly.reduce((s,w)=>s+w.Expense_Budget,0);
+  const forecastSales = STATE.forecast.reduce((s,w)=>s+w.Sales_Hat,0);
+  const forecastExpense = STATE.forecast.reduce((s,w)=>s+w.Expense_Hat,0);
+  const salesVarPct = (totalSales-totalSalesBudget)/totalSalesBudget*100;
+  const expVarPct = (totalExpense-totalExpenseBudget)/totalExpenseBudget*100;
+  const opProfit = totalSales-totalExpense;
+  const opMargin = opProfit/totalSales*100;
+
+  const rmseS = STATE.models.sales.testMetrics.rmse, rmseE = STATE.models.expense.testMetrics.rmse;
+  const nextWk = STATE.forecast[0];
+  const probBudgetSales = normCDF((nextWk.Sales_Hat - nextWk.Sales_Budget)/rmseS)*100;
+  const probBudgetExpense = normCDF((nextWk.Expense_Budget - nextWk.Expense_Hat)/rmseE)*100;
+
+  document.getElementById('kpiPeriodNote').textContent =
+    'Historical totals across '+weekly.length+' weeks ('+weekly[0].Week_Start+' → '+weekly[weekly.length-1].Week_Start+'). Forecast = next 12 weeks from regression model.';
+
+  document.getElementById('kpiSalesRow').innerHTML = [
+    kpiCard('Actual Sales', fmtCompact(totalSales), 'Full period total', 'blue'),
+    kpiCard('Forecast Sales (Next 12 Wks)', fmtCompact(forecastSales), 'Regression projection', 'purple'),
+    kpiCard('Sales Budget', fmtCompact(totalSalesBudget), 'Full period target', 'blue'),
+    kpiCard('Sales Variance %', fmtPct(salesVarPct), '', salesVarPct>=0?'green':'red',
+      '<span class="badge '+(salesVarPct>=0?'good':'bad')+'">'+(salesVarPct>=0?'▲ Favourable':'▼ Unfavourable')+'</span>')
+  ].join('');
+
+  document.getElementById('kpiExpenseRow').innerHTML = [
+    kpiCard('Actual Expenses', fmtCompact(totalExpense), 'Full period total', 'blue'),
+    kpiCard('Forecast Expenses (Next 12 Wks)', fmtCompact(forecastExpense), 'Regression projection', 'purple'),
+    kpiCard('Expense Budget', fmtCompact(totalExpenseBudget), 'Full period target', 'blue'),
+    kpiCard('Expense Variance %', fmtPct(expVarPct), '', expVarPct<=0?'green':'red',
+      '<span class="badge '+(expVarPct<=0?'good':'bad')+'">'+(expVarPct<=0?'▲ Favourable (under budget)':'▼ Unfavourable (over budget)')+'</span>')
+  ].join('');
+
+  document.getElementById('kpiProfitRow').innerHTML = [
+    kpiCard('Operating Profit', fmtCompact(opProfit), 'Actual sales − actual expense', opProfit>=0?'green':'red'),
+    kpiCard('Operating Margin', opMargin.toFixed(1)+'%', 'Operating profit ÷ sales', opMargin>=0?'green':'red'),
+    kpiCard('P(Next Week Sales ≥ Budget)', fmtProb(probBudgetSales), 'Statistical success probability', probBudgetSales>=50?'green':'red'),
+    kpiCard('P(Next Week Expense ≤ Budget)', fmtProb(probBudgetExpense), 'Statistical success probability', probBudgetExpense>=50?'green':'red')
+  ].join('');
+}
+
+/* ---------- PAST ---------- */
+let chartSalesHistory, chartExpenseHistory;
+function renderPast(){
+  const weekly = STATE.weekly;
+  const labels = weekly.map(w=>w.Week_Start);
+  const salesActual = weekly.map(w=>w.Sales_Revenue);
+  const salesBudget = weekly.map(w=>w.Sales_Budget);
+  const salesRoll = rollingAvg(salesActual,4);
+  const expActual = weekly.map(w=>w.Total_Expense);
+  const expBudget = weekly.map(w=>w.Expense_Budget);
+  const expRoll = rollingAvg(expActual,4);
+
+  chartSalesHistory && chartSalesHistory.destroy();
+  chartSalesHistory = new Chart(document.getElementById('chartSalesHistory'), {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'Actual', data:salesActual, borderColor:'#2857c9', backgroundColor:'#2857c9', borderWidth:2, pointRadius:0, tension:.15},
+      {label:'Budget', data:salesBudget, borderColor:'#8695ab', borderDash:[6,4], borderWidth:1.5, pointRadius:0, tension:.15},
+      {label:'4-Wk Rolling Avg', data:salesRoll, borderColor:'#0f9d63', borderDash:[2,3], borderWidth:2, pointRadius:0, tension:.15}
+    ]},
+    options: baseLineOptions('$')
+  });
+
+  chartExpenseHistory && chartExpenseHistory.destroy();
+  chartExpenseHistory = new Chart(document.getElementById('chartExpenseHistory'), {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'Actual', data:expActual, borderColor:'#d0392c', backgroundColor:'#d0392c', borderWidth:2, pointRadius:0, tension:.15},
+      {label:'Budget', data:expBudget, borderColor:'#8695ab', borderDash:[6,4], borderWidth:1.5, pointRadius:0, tension:.15},
+      {label:'4-Wk Rolling Avg', data:expRoll, borderColor:'#c07a12', borderDash:[2,3], borderWidth:2, pointRadius:0, tension:.15}
+    ]},
+    options: baseLineOptions('$')
+  });
+
+  document.getElementById('statTableSales').innerHTML = statRows(salesActual);
+  document.getElementById('statTableExpense').innerHTML = statRows(expActual);
+}
+function statRows(arr){
+  const m=mean(arr), sd=stddev(arr), cv=sd/m*100;
+  const rows=[
+    ['Mean (weekly)', fmtCompact(m)],
+    ['Median (weekly)', fmtCompact(median(arr))],
+    ['Minimum', fmtCompact(Math.min(...arr))],
+    ['Maximum', fmtCompact(Math.max(...arr))],
+    ['Std. Deviation', fmtCompact(sd)],
+    ['Coefficient of Variation', cv.toFixed(1)+'%'],
+    ['Total (all weeks)', fmtCompact(arr.reduce((s,x)=>s+x,0))]
+  ];
+  return rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>').join('');
+}
+function baseLineOptions(prefix){
+  return {
+    responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+    plugins:{ legend:{position:'bottom', labels:{boxWidth:12, usePointStyle:true, pointStyle:'line'}},
+      tooltip:{callbacks:{label:ctx=> ctx.dataset.label+': '+fmtCompact(ctx.parsed.y)}} },
+    scales:{ x:{ticks:{maxTicksLimit:10, font:{size:10}}, grid:{display:false}},
+      y:{ticks:{callback:v=>fmtCompact(v), font:{size:10}}, grid:{color:'#eef1f6'}} }
+  };
+}
+
+/* ---------- DIAGNOSTIC ---------- */
+let chartDiagnostic;
+function renderDiagnostic(dim){
+  const data = STATE.groups[dim];
+  const sorted = [...data].sort((a,b)=>b.Sales_Variance_Pct-a.Sales_Variance_Pct);
+  const labels = sorted.map(g=>g.key);
+  const values = sorted.map(g=>g.Sales_Variance_Pct);
+  const colors = values.map(v=>v>=0?'#0f9d63':'#d0392c');
+
+  chartDiagnostic && chartDiagnostic.destroy();
+  chartDiagnostic = new Chart(document.getElementById('chartDiagnostic'), {
+    type:'bar',
+    data:{labels, datasets:[{label:'Sales Variance %', data:values, backgroundColor:colors, borderRadius:4}]},
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.parsed.x.toFixed(1)+'%'}}},
+      scales:{x:{ticks:{callback:v=>v+'%'}, grid:{color:'#eef1f6'}}, y:{grid:{display:false}}}
+    }
+  });
+
+  const full = [...data].sort((a,b)=>b.Sales_Variance_Pct-a.Sales_Variance_Pct);
+  const top = full.slice(0,5), bottom = full.slice(-5).reverse();
+  document.getElementById('tableTopPerformers').innerHTML = perfTable(top);
+  document.getElementById('tableBottomPerformers').innerHTML = perfTable(bottom);
+}
+function perfTable(rows){
+  let html = '<tr><th>Segment</th><th>Sales</th><th>Budget</th><th>Variance %</th></tr>';
+  rows.forEach(g=>{
+    html += '<tr><td>'+g.key+'</td><td>'+fmtCompact(g.Sales_Revenue)+'</td><td>'+fmtCompact(g.Sales_Budget)+'</td>'+
+      '<td><span class="pill-sm '+(g.Sales_Variance_Pct>=0?'good':'bad')+'">'+fmtPct(g.Sales_Variance_Pct)+'</span></td></tr>';
+  });
+  return html;
+}
+document.getElementById('diagDimToggle').addEventListener('click', e=>{
+  const btn = e.target.closest('.btn-toggle'); if(!btn) return;
+  document.querySelectorAll('#diagDimToggle .btn-toggle').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDiagnostic(btn.dataset.dim);
+});
+
+/* ---------- PREDICTIVE ---------- */
+let chartSalesForecast, chartExpenseForecast;
+function renderPredictive(){
+  const weekly = STATE.weekly, fc = STATE.forecast;
+  const histLabels = weekly.map(w=>w.Week_Start);
+  const fcLabels = fc.map(w=>w.Week_Start);
+  const allLabels = histLabels.concat(fcLabels);
+
+  function buildForecastChart(canvasId, histActual, histBudget, fcHat, fcLo, fcHi, fcBudget, colorHex){
+    const nHist = histActual.length;
+    const pad = new Array(nHist).fill(null);
+    const actualSeries = histActual.concat(new Array(fc.length).fill(null));
+    const hatSeries = pad.concat(fcHat);
+    // connect last actual point to first forecast point
+    hatSeries[nHist-1] = histActual[nHist-1];
+    const loSeries = pad.concat(fcLo); loSeries[nHist-1] = histActual[nHist-1];
+    const hiSeries = pad.concat(fcHi); hiSeries[nHist-1] = histActual[nHist-1];
+    const budgetSeries = histBudget.concat(fcBudget);
+
+    return new Chart(document.getElementById(canvasId), {
+      type:'line',
+      data:{labels: allLabels.slice(-40), datasets:[
+        {label:'95% Interval', data: hiSeries.slice(-40), backgroundColor: colorHex+'22', borderColor:'transparent', fill:'+1', pointRadius:0, order:3},
+        {label:'95% Interval Low', data: loSeries.slice(-40), backgroundColor: colorHex+'22', borderColor:'transparent', fill:false, pointRadius:0, order:3, hidden:false},
+        {label:'Actual', data: actualSeries.slice(-40), borderColor:colorHex, borderWidth:2.5, pointRadius:0, tension:.15, order:1},
+        {label:'Forecast', data: hatSeries.slice(-40), borderColor:colorHex, borderDash:[6,4], borderWidth:2.5, pointRadius:0, tension:.15, order:1},
+        {label:'Budget', data: budgetSeries.slice(-40), borderColor:'#8695ab', borderDash:[2,3], borderWidth:1.3, pointRadius:0, tension:.15, order:2}
+      ]},
+      options:{
+        responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+        plugins:{legend:{position:'bottom', labels:{boxWidth:12, usePointStyle:true, pointStyle:'line', filter: it=>it.text!=='95% Interval Low'}},
+          tooltip:{filter:it=>it.dataset.label!=='95% Interval Low', callbacks:{label:ctx=>ctx.dataset.label+': '+fmtCompact(ctx.parsed.y)}}},
+        scales:{x:{ticks:{maxTicksLimit:8, font:{size:10}}, grid:{display:false}}, y:{ticks:{callback:v=>fmtCompact(v), font:{size:10}}, grid:{color:'#eef1f6'}}}
+      }
+    });
+  }
+
+  chartSalesForecast && chartSalesForecast.destroy();
+  chartSalesForecast = buildForecastChart('chartSalesForecast',
+    weekly.map(w=>w.Sales_Revenue), weekly.map(w=>w.Sales_Budget),
+    fc.map(w=>w.Sales_Hat), fc.map(w=>w.Sales_Lo), fc.map(w=>w.Sales_Hi), fc.map(w=>w.Sales_Budget), '#2857c9');
+
+  chartExpenseForecast && chartExpenseForecast.destroy();
+  chartExpenseForecast = buildForecastChart('chartExpenseForecast',
+    weekly.map(w=>w.Total_Expense), weekly.map(w=>w.Expense_Budget),
+    fc.map(w=>w.Expense_Hat), fc.map(w=>w.Expense_Lo), fc.map(w=>w.Expense_Hi), fc.map(w=>w.Expense_Budget), '#d0392c');
+
+  document.getElementById('coefTableSales').innerHTML = coefTable(STATE.models.sales.beta, SALES_FEATURE_NAMES);
+  document.getElementById('coefTableExpense').innerHTML = coefTable(STATE.models.expense.beta, EXPENSE_FEATURE_NAMES);
+}
+function coefTable(beta, names){
+  let html = '<tr><th>Driver</th><th>Coefficient</th></tr>';
+  beta.forEach((b,i)=>{
+    html += '<tr><td>'+names[i]+'</td><td>'+ (Math.abs(b)<10 ? b.toFixed(4) : fmtCAD1.format(b)) +'</td></tr>';
+  });
+  return html;
+}
+
+/* ---------- UNCERTAINTY ---------- */
+let chartActualPredicted;
+function renderUncertainty(){
+  const s = STATE.models.sales, e = STATE.models.expense;
+  document.getElementById('mmSalesR2').textContent = s.testMetrics.r2.toFixed(3);
+  document.getElementById('mmSalesRMSE').textContent = fmtCompact(s.testMetrics.rmse);
+  document.getElementById('mmSalesMAPE').textContent = s.testMetrics.mape.toFixed(2)+'%';
+  document.getElementById('mmSalesR2Train').textContent = s.trainMetrics.r2.toFixed(3);
+
+  document.getElementById('mmExpR2').textContent = e.testMetrics.r2.toFixed(3);
+  document.getElementById('mmExpRMSE').textContent = fmtCompact(e.testMetrics.rmse);
+  document.getElementById('mmExpMAPE').textContent = e.testMetrics.mape.toFixed(2)+'%';
+  document.getElementById('mmExpR2Train').textContent = e.trainMetrics.r2.toFixed(3);
+
+  const salesPts = s.testActual.map((v,i)=>({x:v, y:s.testPred[i]}));
+  const expPts = e.testActual.map((v,i)=>({x:v, y:e.testPred[i]}));
+  const allVals = salesPts.concat(expPts).flatMap(p=>[p.x,p.y]);
+  const lo = Math.min(...allVals), hi = Math.max(...allVals);
+
+  chartActualPredicted && chartActualPredicted.destroy();
+  chartActualPredicted = new Chart(document.getElementById('chartActualPredicted'), {
+    type:'scatter',
+    data:{datasets:[
+      {label:'Sales (test)', data:salesPts, backgroundColor:'#2857c9', pointRadius:5},
+      {label:'Expense (test)', data:expPts, backgroundColor:'#d0392c', pointRadius:5},
+      {label:'Perfect Fit', data:[{x:lo,y:lo},{x:hi,y:hi}], type:'line', borderColor:'#8695ab', borderDash:[4,4], pointRadius:0, borderWidth:1.5}
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom', labels:{boxWidth:12, usePointStyle:true}},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': actual '+fmtCompact(ctx.parsed.x)+' / predicted '+fmtCompact(ctx.parsed.y)}}},
+      scales:{x:{title:{display:true,text:'Actual ($)', font:{size:11}}, ticks:{callback:v=>fmtCompact(v), font:{size:10}}},
+        y:{title:{display:true,text:'Predicted ($)', font:{size:11}}, ticks:{callback:v=>fmtCompact(v), font:{size:10}}}}
+    }
+  });
+
+  let html = '<tr><th>Week</th><th>Sales Forecast</th><th>Sales 95% Range</th><th>Expense Forecast</th><th>Expense 95% Range</th></tr>';
+  STATE.forecast.forEach(w=>{
+    html += '<tr><td>'+w.Week_Start+'</td><td>'+fmtCompact(w.Sales_Hat)+'</td>'+
+      '<td>'+fmtCompact(w.Sales_Lo)+' – '+fmtCompact(w.Sales_Hi)+'</td>'+
+      '<td>'+fmtCompact(w.Expense_Hat)+'</td>'+
+      '<td>'+fmtCompact(w.Expense_Lo)+' – '+fmtCompact(w.Expense_Hi)+'</td></tr>';
+  });
+  document.getElementById('tableForecastDetail').innerHTML = html;
+}
+
+/* ---------- DECISION / WHAT-IF ---------- */
+const SLIDER_DEFS = [
+  {key:'traffic', name:'Foot Traffic', min:-20, max:20, step:1, suffix:'%'},
+  {key:'conversion', name:'Conversion Rate', min:-20, max:20, step:1, suffix:'%'},
+  {key:'marketing', name:'Marketing Spend', min:-30, max:50, step:1, suffix:'%'},
+  {key:'discount', name:'Discount Rate', min:-50, max:50, step:1, suffix:'%'},
+  {key:'labour', name:'Labour Hours', min:-20, max:20, step:1, suffix:'%'},
+  {key:'cogs', name:'COGS Rate', min:-20, max:20, step:1, suffix:'%'}
+];
+function renderSliders(){
+  const container = document.getElementById('sliderContainer');
+  container.innerHTML = SLIDER_DEFS.map(s=>`
+    <div class="slider-block">
+      <div class="slider-label-row"><span class="name">${s.name}</span><span class="val" id="val_${s.key}">${STATE.whatif[s.key]}${s.suffix}</span></div>
+      <input type="range" id="slider_${s.key}" min="${s.min}" max="${s.max}" step="${s.step}" value="${STATE.whatif[s.key]}">
+    </div>
+  `).join('');
+  SLIDER_DEFS.forEach(s=>{
+    document.getElementById('slider_'+s.key).addEventListener('input', e=>{
+      STATE.whatif[s.key] = Number(e.target.value);
+      document.getElementById('val_'+s.key).textContent = (STATE.whatif[s.key]>=0?'+':'')+STATE.whatif[s.key]+s.suffix;
+      renderWhatIf();
+      renderRecommendations();
+    });
+  });
+}
+document.getElementById('resetSliders').addEventListener('click', ()=>{
+  SLIDER_DEFS.forEach(s=>{ STATE.whatif[s.key]=0; });
+  renderSliders();
+  renderWhatIf();
+  renderRecommendations();
+});
+
+let chartWhatIf;
+function renderWhatIf(){
+  const b = STATE.baseline;
+  const scenario = computeScenario(STATE.whatif);
+  const baseProfit = b.Sales_Revenue - b.Total_Expense;
+  const baseMargin = baseProfit/b.Sales_Revenue*100;
+
+  document.getElementById('wiSales').textContent = fmtCompact(scenario.salesHat);
+  document.getElementById('wiSalesDelta').textContent = 'vs baseline '+fmtCompact(b.Sales_Revenue)+' ('+fmtPct((scenario.salesHat-b.Sales_Revenue)/b.Sales_Revenue*100)+')';
+  document.getElementById('wiExpense').textContent = fmtCompact(scenario.expenseHat);
+  document.getElementById('wiExpenseDelta').textContent = 'vs baseline '+fmtCompact(b.Total_Expense)+' ('+fmtPct((scenario.expenseHat-b.Total_Expense)/b.Total_Expense*100)+')';
+  document.getElementById('wiProfit').textContent = fmtCompact(scenario.profitHat);
+  document.getElementById('wiProfitDelta').textContent = 'vs baseline '+fmtCompact(baseProfit)+' ('+fmtPct((scenario.profitHat-baseProfit)/Math.abs(baseProfit)*100)+')';
+  document.getElementById('wiMargin').textContent = scenario.margin.toFixed(1)+'%';
+  document.getElementById('wiMarginDelta').textContent = 'vs baseline '+baseMargin.toFixed(1)+'%';
+  document.getElementById('wiProbSales').textContent = fmtProb(scenario.probSales);
+  document.getElementById('wiProbExpense').textContent = fmtProb(scenario.probExpense);
+
+  chartWhatIf && chartWhatIf.destroy();
+  chartWhatIf = new Chart(document.getElementById('chartWhatIf'), {
+    type:'bar',
+    data:{labels:['Sales','Expense','Operating Profit'],
+      datasets:[
+        {label:'Baseline', data:[b.Sales_Revenue, b.Total_Expense, baseProfit], backgroundColor:'#8695ab', borderRadius:4},
+        {label:'Scenario', data:[scenario.salesHat, scenario.expenseHat, scenario.profitHat], backgroundColor:'#2857c9', borderRadius:4}
+      ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom', labels:{boxWidth:12, usePointStyle:true}},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fmtCompact(ctx.parsed.y)}}},
+      scales:{y:{ticks:{callback:v=>fmtCompact(v)}, grid:{color:'#eef1f6'}}, x:{grid:{display:false}}}
+    }
+  });
+  STATE._lastScenario = scenario;
+}
+
+/* ---------- RECOMMENDATIONS ---------- */
+function renderRecommendations(){
+  const weekly = STATE.weekly;
+  const totalSales = weekly.reduce((s,w)=>s+w.Sales_Revenue,0);
+  const totalSalesBudget = weekly.reduce((s,w)=>s+w.Sales_Budget,0);
+  const totalExpense = weekly.reduce((s,w)=>s+w.Total_Expense,0);
+  const totalExpenseBudget = weekly.reduce((s,w)=>s+w.Expense_Budget,0);
+  const salesVarPct = (totalSales-totalSalesBudget)/totalSalesBudget*100;
+  const expVarPct = (totalExpense-totalExpenseBudget)/totalExpenseBudget*100;
+
+  const regionSorted = [...STATE.groups.Region].sort((a,b)=>a.Sales_Variance_Pct-b.Sales_Variance_Pct);
+  const worstRegion = regionSorted[0], bestRegion = regionSorted[regionSorted.length-1];
+  const catSorted = [...STATE.groups.Category].sort((a,b)=>a.Sales_Variance_Pct-b.Sales_Variance_Pct);
+  const worstCat = catSorted[0];
+
+  const fcSalesTotal = STATE.forecast.reduce((s,w)=>s+w.Sales_Hat,0);
+  const fcBudgetTotal = STATE.forecast.reduce((s,w)=>s+w.Sales_Budget,0);
+  const fcGap = fcSalesTotal - fcBudgetTotal;
+
+  const scenario = STATE._lastScenario || computeScenario(STATE.whatif);
+  const b = STATE.baseline;
+  const slidersMoved = Object.values(STATE.whatif).some(v=>v!==0);
+
+  const recs = [];
+
+  recs.push({
+    type: salesVarPct>=0?'positive':'urgent',
+    icon: salesVarPct>=0?'✅':'⚠️',
+    html: 'Network sales are <b>'+fmtPct(salesVarPct)+'</b> vs. budget over the observed period ('+fmtCompact(totalSales)+' actual vs '+fmtCompact(totalSalesBudget)+' budget). '+
+      (salesVarPct>=0 ? 'Current commercial execution is ahead of plan — protect the drivers behind this (traffic, conversion, marketing efficiency).' :
+        'This is a budget shortfall of '+fmtCompact(Math.abs(totalSales-totalSalesBudget))+'; prioritize traffic and conversion initiatives in underperforming regions.')
+  });
+
+  recs.push({
+    type: expVarPct<=0?'positive':'urgent',
+    icon: expVarPct<=0?'✅':'⚠️',
+    html: 'Total expense is <b>'+fmtPct(expVarPct)+'</b> vs. budget ('+fmtCompact(totalExpense)+' actual vs '+fmtCompact(totalExpenseBudget)+' budget). '+
+      (expVarPct<=0 ? 'Cost discipline is favourable — current labour, COGS and marketing spend levels are sustainable.' :
+        'Costs are running over plan by '+fmtCompact(Math.abs(totalExpense-totalExpenseBudget))+'; review COGS rate negotiation and labour scheduling efficiency first, as they are the largest expense drivers in the model.')
+  });
+
+  recs.push({
+    type:'neutral', icon:'📍',
+    html: '<b>'+worstRegion.key+'</b> is the weakest region on sales variance ('+fmtPct(worstRegion.Sales_Variance_Pct)+') while <b>'+bestRegion.key+'</b> leads ('+fmtPct(bestRegion.Sales_Variance_Pct)+'). '+
+      'Consider transferring merchandising and marketing tactics from '+bestRegion.key+' to '+worstRegion.key+', and audit '+worstCat.key+' category performance, the weakest category network-wide ('+fmtPct(worstCat.Sales_Variance_Pct)+').'
+  });
+
+  recs.push({
+    type: fcGap>=0?'positive':'urgent',
+    icon: fcGap>=0?'📈':'📉',
+    html: 'The 12-week forward forecast projects '+fmtCompact(fcSalesTotal)+' in sales against a trended budget of '+fmtCompact(fcBudgetTotal)+' — a '+(fcGap>=0?'surplus':'gap')+' of '+fmtCompact(Math.abs(fcGap))+'. '+
+      (fcGap>=0 ? 'Momentum supports maintaining current investment levels into the next quarter.' : 'Without intervention, budget attainment is at risk next quarter; the what-if panel below can be used to size a corrective action.')
+  });
+
+  const mapeAvg = (STATE.models.sales.testMetrics.mape + STATE.models.expense.testMetrics.mape)/2;
+  recs.push({
+    type: mapeAvg<5?'positive':'neutral', icon:'🔍',
+    html: 'Model reliability: Sales model MAPE '+STATE.models.sales.testMetrics.mape.toFixed(1)+'%, Expense model MAPE '+STATE.models.expense.testMetrics.mape.toFixed(1)+'% on held-out weeks (R² of '+STATE.models.sales.testMetrics.r2.toFixed(2)+' and '+STATE.models.expense.testMetrics.r2.toFixed(2)+' respectively). '+
+      (mapeAvg<5 ? 'Forecast accuracy is high — decisions can be made with reasonable confidence.' : 'Forecast accuracy is moderate — treat point forecasts as directional and rely on the prediction interval for planning.')
+  });
+
+  if(slidersMoved){
+    const salesDelta = scenario.salesHat - b.Sales_Revenue;
+    const expDelta = scenario.expenseHat - b.Total_Expense;
+    const profitDelta = scenario.profitHat - (b.Sales_Revenue-b.Total_Expense);
+    recs.push({
+      type: profitDelta>=0?'positive':'urgent', icon:'🎛️',
+      html: 'Your current what-if scenario changes weekly sales by <b>'+fmtCompact(salesDelta)+'</b> and expenses by <b>'+fmtCompact(expDelta)+'</b>, moving operating profit by <b>'+fmtCompact(profitDelta)+'</b> and shifting the probability of hitting the sales budget target to <b>'+fmtProb(scenario.probSales)+'</b>. '+
+        (profitDelta>=0 ? 'This lever combination is directionally accretive to profit — consider phasing it in.' : 'This combination reduces profit — consider dialing back the discount or COGS-rate assumptions, or pairing it with a traffic/conversion offset.')
+    });
+  } else {
+    recs.push({
+      type:'neutral', icon:'🎛️',
+      html: 'No what-if adjustments applied yet. Try increasing Marketing Spend and Conversion Rate together in the Decision panel to quantify the profit and budget-probability impact of a demand-generation push.'
+    });
+  }
+
+  document.getElementById('recList').innerHTML = recs.map(r=>
+    '<li class="'+(r.type==='urgent'?'urgent':r.type==='positive'?'positive':'')+'"><span class="rec-icon">'+r.icon+'</span><div>'+r.html+'</div></li>'
+  ).join('');
+}
+
+/* ---------- Nav active state ---------- */
+const sectionIds = ['kpi','past','diagnostic','predictive','uncertainty','decision','recommendation'];
+window.addEventListener('scroll', ()=>{
+  let current = sectionIds[0];
+  for(const id of sectionIds){
+    const el = document.getElementById(id);
+    if(el && el.getBoundingClientRect().top < 120) current = id;
+  }
+  document.querySelectorAll('.nav-link').forEach(a=>{
+    a.classList.toggle('active', a.getAttribute('href') === '#'+current);
+  });
+}, {passive:true});
+
+/* Attempt silent auto-load if served over http with the CSV alongside (no-op on file://) */
+(function tryAutoLoad(){
+  if(location.protocol === 'file:') return;
+  const candidates = ['Retail_Sales_Expense_Predictive_Analytics (1).csv','Retail_Sales_Expense_Predictive_Analytics_1.csv','data.csv'];
+  (async ()=>{
+    for(const name of candidates){
+      try{
+        const res = await fetch(encodeURI(name));
+        if(res.ok){
+          const blob = await res.blob();
+          loadFile(new File([blob], name));
+          return;
+        }
+      }catch(e){}
+    }
+  })();
+})();
+</script>
+</body>
+</html>
