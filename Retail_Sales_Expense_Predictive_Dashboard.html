@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Retail Sales &amp; Expense Predictive Analytics Dashboard</title>
+<title>Northlytics — Retail Sales &amp; Expense Predictive Analytics Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -40,8 +40,12 @@
     width:44px; height:44px; border-radius:10px; background:linear-gradient(135deg,var(--blue-500),var(--purple-600));
     display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; flex-shrink:0;
   }
-  .brand h1{font-size:19px; font-weight:800; letter-spacing:.2px;}
-  .brand p{margin:2px 0 0; font-size:12px; color:#b8c4d8;}
+  .brand-name{
+    font-size:24px; font-weight:800; letter-spacing:.07em; line-height:1; margin-bottom:5px;
+    background:linear-gradient(135deg,#8fb4ff,#c9a4ff); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .brand h1{font-size:14px; font-weight:600; letter-spacing:.1px; color:#dde3ec;}
+  .brand p{margin:2px 0 0; font-size:12px; color:#8695ab;}
   .data-badge{
     font-size:12px; font-weight:600; padding:6px 12px; border-radius:20px; background:rgba(37,209,138,.1);
     color:#bdf5dc; border:1px solid rgba(37,209,138,.35); display:flex; align-items:center; gap:6px;
@@ -195,11 +199,6 @@
   .rec-target{background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-top:9px; color:var(--navy-950); font-weight:600; font-size:12.8px;}
   .rec-target .rec-target-label{color:var(--blue-600); font-weight:800; text-transform:uppercase; font-size:10.5px; letter-spacing:.04em; display:block; margin-bottom:2px;}
 
-  .methodology{background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px 22px; font-size:12.5px; color:var(--slate-600);}
-  .methodology h4{font-size:13px; color:var(--navy-950); margin-bottom:8px;}
-  .methodology ul{margin:6px 0 14px 18px; padding:0;}
-  .methodology li{margin-bottom:4px;}
-
   footer{padding:26px 0 40px; text-align:center; color:var(--slate-500); font-size:12px;}
 
   .flex-between{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
@@ -231,8 +230,9 @@
 <header class="topbar">
   <div class="wrap">
     <div class="brand">
-      <div class="logo">R</div>
+      <div class="logo">N</div>
       <div>
+        <div class="brand-name">NORTHLYTICS</div>
         <h1>Retail Sales &amp; Expense Predictive Analytics</h1>
         <p>Executive Dashboard · Canada Weekly Operations</p>
       </div>
@@ -530,27 +530,6 @@
       <div class="section-sub" style="margin-bottom:16px;">Automatically generated from current KPIs, diagnostics, model output, inventory economics and your what-if scenario — each with an insight, an action plan, and a measurable target. Updates live as you filter or move the sliders.</div>
       <ul class="rec-list" id="recList"></ul>
     </section>
-
-    <div class="methodology" style="margin-top:34px;">
-      <h4>Methodology &amp; Assumptions</h4>
-      <ul>
-        <li>The dataset is embedded directly in this file (no external CSV required). Filtering by Region, Store Format or Category re-runs the entire pipeline below on the matching subset.</li>
-        <li>All figures are aggregated across the currently filtered stores/categories at weekly granularity unless otherwise labelled.</li>
-        <li>Sales and Total Expense are each modelled with an ordinary least squares multiple regression fitted on 80% of weeks (chronological) and validated on the remaining held-out 20%.</li>
-        <li>Sales drivers: total foot traffic, average conversion rate, total marketing spend, average discount rate, average transaction value, consumer confidence index, holiday flag.</li>
-        <li>Expense drivers: total labour hours, average hourly wage, average COGS rate, total marketing spend, modelled sales revenue, total rent expense, total utilities expense.</li>
-        <li>12-week forward driver values are extrapolated with independent linear trend lines per driver; holiday flags are inferred from historically holiday-flagged week numbers.</li>
-        <li>Prediction intervals use ±1.96 × held-out RMSE (approximate 95% interval under a normal error assumption).</li>
-        <li>Inventory Turnover and DSI are estimated: DSI = assumed full-availability stock-cover target (days) × in-stock availability rate; Turnover = 365 ÷ DSI. The raw dataset does not include on-hand inventory dollar values, so this is a transparent proxy, not a ledger figure.</li>
-        <li>Reorder Point and Safety Stock use the classic formula (avg weekly demand × lead time) + (Z × demand std. dev. × √lead time), where weekly transaction count is used as the demand proxy and lead time / service level are user-adjustable assumptions.</li>
-        <li>The inventory-availability sales elasticity used in the what-if panel is estimated from a separate store-category-week level regression (which preserves cross-sectional stock variation that is averaged out at network level), not from the main network-level sales model.</li>
-        <li>Estimated holding cost assumes a 22%/year inventory carrying-cost rate applied to an estimated average inventory dollar value (COGS run-rate × DSI ÷ 365 × 7); this is an illustrative addition layered on top of — not double-counted within — the historical Total Expense structure.</li>
-        <li>Price–demand elasticity is estimated per category with a log-log regression of transaction volume on realized price (1 − discount rate), fit on store-category-week rows (not weekly network totals, which average away the discount variation needed to identify it). The margin impact of a further +1pp of discount uses the standard total-revenue test (%ΔRevenue ≈ (1+E) × %ΔPrice) rather than a direct regression of margin rate on discount — in this dataset COGS rate is generated independently of discount rate, so margin *rate* has no structural link to discounting and a direct regression of it returns a near-zero, uninformative coefficient.</li>
-        <li>The dataset records one combined Marketing Spend figure rather than separate digital and in-store ad ledgers. Blended ROAS (sales ÷ spend) and the digital/in-store revenue mix (sales weighted by online order share) are real, non-modelled figures. The "highest marginal return" lever comparison is a per-category regression of sales on marketing spend, foot traffic and online order share together — three independently-measured columns, not a spend split — with each lever's dollar value normalized to a modest ~1% (or +1pp) increase so they can be ranked on equal footing.</li>
-        <li>What-if scenarios apply slider-adjusted drivers to the same fitted regression coefficients; non-slider drivers are held at their trailing 4-week average.</li>
-        <li>Success probabilities use a normal approximation on the distance between the scenario/forecast value and the target, scaled by held-out RMSE, and are floored/capped at &lt;1% / &gt;99% for readability.</li>
-      </ul>
-    </div>
   </div>
 </main>
 
@@ -4186,7 +4165,7 @@ function buildGroups(rows){
     return arr;
   }
   return {
-    Store: groupBy(r=>r.Store_ID+' — '+r.City),
+    Store: groupBy(r=>r.City),
     Region: groupBy(r=>r.Region),
     Category: groupBy(r=>r.Category),
     Format: groupBy(r=>r.Store_Format)
