@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Northlytics — Retail Sales &amp; Expense Predictive Analytics Dashboard</title>
+<title>Aurelia — Retail Sales &amp; Expense Predictive Analytics Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
   :root{
@@ -37,15 +37,18 @@
   header.topbar .wrap{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px;}
   .brand{display:flex; align-items:center; gap:14px;}
   .brand .logo{
-    width:44px; height:44px; border-radius:10px; background:linear-gradient(135deg,var(--blue-500),var(--purple-600));
-    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; flex-shrink:0;
+    width:44px; height:44px; border-radius:10px; background:linear-gradient(135deg,#e8c886,#a97c3f);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:19px; flex-shrink:0;
+    font-family:'Playfair Display', serif; color:#241a08;
   }
   .brand-name{
-    font-size:24px; font-weight:800; letter-spacing:.07em; line-height:1; margin-bottom:5px;
-    background:linear-gradient(135deg,#8fb4ff,#c9a4ff); -webkit-background-clip:text; background-clip:text; color:transparent;
+    font-family:'Playfair Display', 'Inter', serif; font-size:28px; font-weight:700; letter-spacing:.09em;
+    line-height:1; margin-bottom:6px;
+    background:linear-gradient(135deg,#f3d9a4,#d4af6a 45%,#f6e6bf 70%,#c79a55);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
   }
-  .brand h1{font-size:14px; font-weight:600; letter-spacing:.1px; color:#dde3ec;}
-  .brand p{margin:2px 0 0; font-size:12px; color:#8695ab;}
+  .brand h1{font-size:13px; font-weight:600; letter-spacing:.4px; color:#a9b4c4; text-transform:uppercase;}
+  .brand p{margin:2px 0 0; font-size:12px; color:#6c7789;}
   .data-badge{
     font-size:12px; font-weight:600; padding:6px 12px; border-radius:20px; background:rgba(37,209,138,.1);
     color:#bdf5dc; border:1px solid rgba(37,209,138,.35); display:flex; align-items:center; gap:6px;
@@ -92,6 +95,38 @@
   }
   .section-head h2{font-size:21px; font-weight:800; color:var(--navy-950);}
   .section-sub{color:var(--slate-600); font-size:13px; margin-top:4px;}
+
+  /* Key Alerts & Anomalies */
+  .alerts-banner{
+    margin-top:22px; background:#fff; border:1px solid var(--border); border-radius:12px; overflow:hidden;
+    box-shadow:0 1px 2px rgba(15,27,45,.03);
+  }
+  .alerts-head{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:14px 20px; background:var(--navy-950);
+  }
+  .alerts-head-icon{font-size:16px;}
+  .alerts-head-title{font-weight:800; font-size:14px; color:#fff; letter-spacing:.02em;}
+  .alerts-count{
+    font-size:11.5px; font-weight:800; padding:2px 10px; border-radius:20px; background:rgba(255,255,255,.12); color:#fff;
+  }
+  .alerts-count.zero{background:rgba(37,209,138,.18); color:#bdf5dc;}
+  .alerts-note{margin-left:auto; font-size:11.5px; color:#8695ab;}
+  .alert-row{
+    display:flex; align-items:flex-start; gap:12px; padding:13px 20px; border-top:1px solid var(--slate-100);
+    font-size:13.3px; cursor:pointer; transition:.12s;
+  }
+  .alert-row:hover{background:var(--slate-50);}
+  .alert-row .alert-icon{font-size:15px; flex-shrink:0; margin-top:1px;}
+  .alert-row .alert-body{flex:1;}
+  .alert-row .alert-text b{color:var(--navy-950);}
+  .alert-row .alert-tag{
+    font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; padding:2px 8px; border-radius:20px;
+    flex-shrink:0; align-self:center;
+  }
+  .alert-row.critical .alert-tag{background:var(--red-100); color:var(--red-600);}
+  .alert-row.warning .alert-tag{background:var(--amber-100); color:var(--amber-600);}
+  .alert-row.ok{cursor:default;}
+  .alert-row.ok .alert-tag{background:var(--green-100); color:var(--green-600);}
 
   #noDataMsg{
     max-width:640px; margin:70px auto; text-align:center; background:#fff; border:1px solid var(--border);
@@ -230,9 +265,9 @@
 <header class="topbar">
   <div class="wrap">
     <div class="brand">
-      <div class="logo">N</div>
+      <div class="logo">A</div>
       <div>
-        <div class="brand-name">NORTHLYTICS</div>
+        <div class="brand-name">Aurelia</div>
         <h1>Retail Sales &amp; Expense Predictive Analytics</h1>
         <p>Executive Dashboard · Canada Weekly Operations</p>
       </div>
@@ -281,6 +316,17 @@
   </div>
 
   <div id="dashboardContent">
+
+    <!-- ================= KEY ALERTS & ANOMALIES ================= -->
+    <div class="alerts-banner" id="alertsBanner">
+      <div class="alerts-head">
+        <span class="alerts-head-icon">🛎️</span>
+        <span class="alerts-head-title">Key Alerts &amp; Anomalies</span>
+        <span class="alerts-count" id="alertsCount"></span>
+        <span class="alerts-note">Auto-generated from the current filter selection</span>
+      </div>
+      <div id="alertsList"></div>
+    </div>
 
     <!-- ================= KPI ================= -->
     <section id="kpi">
@@ -4074,6 +4120,7 @@ function processData(rows){
   buildInventoryAnalytics();
   buildPriceElasticity(rows);
   buildMarketingAttribution(rows);
+  buildAlerts();
 
   const dateSpan = STATE.weekly.length ? (STATE.weekly[0].Week_Start+' → '+STATE.weekly[STATE.weekly.length-1].Week_Start) : '—';
   document.getElementById('filterSummary').textContent =
@@ -4502,13 +4549,138 @@ function buildMarketingAttribution(rows){
   };
 }
 
+/* ============================================================
+   KEY ALERTS & ANOMALIES
+   Recomputed on every filter change / assumption change from whatever is currently in STATE, so it
+   always reflects the live (filtered) data rather than a fixed snapshot.
+============================================================ */
+const OFF_BUDGET_THRESHOLD_PCT = -5;
+const WAGE_RATIO_BENCHMARK_PCT = 28;
+const CAC_DIVERGENCE_RATIO = 1.5;
+
+function buildAlerts(){
+  const alerts = [];
+  const weekly = STATE.weekly;
+  const totalSales = weekly.reduce((s,w)=>s+w.Sales_Revenue,0);
+  const totalLabor = weekly.reduce((s,w)=>s+w.Labor_Expense,0);
+
+  /* Discount cannibalization */
+  (STATE.elasticity.byCategory||[]).forEach(c=>{
+    if(c.verdict==='Cannibalizing'){
+      alerts.push({
+        level:'critical', icon:'🏷️',
+        text:'<b>'+c.category+'</b> discounting is cannibalizing margin — a further +1pp of discount is projected to cost <b>'+fmtCompact(Math.abs(c.marginImpactFor1pp))+'</b> in gross margin (elasticity '+c.E.toFixed(2)+', inelastic).',
+        anchor:'#diagnostic'
+      });
+    }
+  });
+
+  /* Off-budget stores / regions */
+  ['Store','Region'].forEach(dim=>{
+    (STATE.groups[dim]||[]).forEach(g=>{
+      if(g.Sales_Variance_Pct <= OFF_BUDGET_THRESHOLD_PCT){
+        alerts.push({
+          level:'critical', icon:'📉',
+          text:'<b>'+g.key+'</b> ('+dim.toLowerCase()+') is <b>'+fmtPct(g.Sales_Variance_Pct)+'</b> off sales budget.',
+          anchor:'#diagnostic'
+        });
+      }
+    });
+  });
+
+  /* Stockout risk */
+  (STATE.inventory.byCategory||[]).forEach(c=>{
+    if(c.risk==='High'){
+      alerts.push({
+        level:'critical', icon:'📦',
+        text:'<b>'+c.category+'</b> in-stock availability is <b>'+(c.avgAvailability*100).toFixed(1)+'%</b> — High stockout risk.',
+        anchor:'#diagnostic'
+      });
+    } else if(c.risk==='Medium'){
+      alerts.push({
+        level:'warning', icon:'📦',
+        text:'<b>'+c.category+'</b> in-stock availability is '+(c.avgAvailability*100).toFixed(1)+'% — Medium stockout risk, worth monitoring.',
+        anchor:'#diagnostic'
+      });
+    }
+  });
+  if(STATE.inventory.worstWeekAvailability < 0.85){
+    alerts.push({
+      level:'warning', icon:'📦',
+      text:'Network in-stock availability fell to <b>'+(STATE.inventory.worstWeekAvailability*100).toFixed(1)+'%</b> in its worst observed week.',
+      anchor:'#past'
+    });
+  }
+
+  /* Wage-to-sales ratio */
+  const wageRatio = totalLabor/Math.max(1,totalSales)*100;
+  if(wageRatio > WAGE_RATIO_BENCHMARK_PCT){
+    alerts.push({
+      level:'warning', icon:'👥',
+      text:'Labour cost is <b>'+wageRatio.toFixed(1)+'%</b> of sales, above the '+WAGE_RATIO_BENCHMARK_PCT+'% benchmark — schedule optimization needed.',
+      anchor:'#recommendation'
+    });
+  }
+
+  /* CAC divergence across categories */
+  if(STATE.marketing.byCategory && STATE.marketing.byCategory.length > 1){
+    const catRows = rowsByKey(STATE.raw, r=>r.Category);
+    const cacs = [];
+    catRows.forEach((sub, cat)=>{
+      const mktg = sub.reduce((s,r)=>s+num(r.Marketing_Spend),0);
+      const txns = sub.reduce((s,r)=>s+num(r.Transactions),0);
+      cacs.push({category:cat, cac: mktg/Math.max(1,txns)});
+    });
+    if(cacs.length > 1){
+      cacs.sort((a,b)=>b.cac-a.cac);
+      const worst = cacs[0], best = cacs[cacs.length-1];
+      if(worst.cac >= best.cac*CAC_DIVERGENCE_RATIO){
+        alerts.push({
+          level:'warning', icon:'📣',
+          text:'<b>'+worst.category+'</b> customer acquisition cost ($'+worst.cac.toFixed(2)+'/transaction) is '+(worst.cac/best.cac).toFixed(1)+'x higher than <b>'+best.category+'</b> ($'+best.cac.toFixed(2)+') — marketing spend may be misallocated.',
+          anchor:'#diagnostic'
+        });
+      }
+    }
+  }
+
+  const order = {critical:0, warning:1};
+  alerts.sort((a,b)=>order[a.level]-order[b.level]);
+  STATE.alerts = alerts.slice(0,8);
+}
+
+function renderAlerts(){
+  const alerts = STATE.alerts||[];
+  const nCritical = alerts.filter(a=>a.level==='critical').length;
+  const nWarning = alerts.filter(a=>a.level==='warning').length;
+  const countEl = document.getElementById('alertsCount');
+  if(alerts.length===0){
+    countEl.textContent = 'All Clear';
+    countEl.classList.add('zero');
+    document.getElementById('alertsList').innerHTML =
+      '<div class="alert-row ok"><span class="alert-icon">✅</span><div class="alert-body">No critical alerts for the current filter selection — sales variance, discount economics, inventory availability, labour cost and marketing spend are all within tolerance.</div><span class="alert-tag">OK</span></div>';
+    return;
+  }
+  countEl.textContent = nCritical+' Critical · '+nWarning+' Warning';
+  countEl.classList.remove('zero');
+  document.getElementById('alertsList').innerHTML = alerts.map(a=>
+    '<div class="alert-row '+a.level+'" onclick="document.querySelector(\''+a.anchor+'\').scrollIntoView({behavior:\'smooth\'})">'+
+      '<span class="alert-icon">'+a.icon+'</span>'+
+      '<div class="alert-body alert-text">'+a.text+'</div>'+
+      '<span class="alert-tag">'+a.level+'</span>'+
+    '</div>'
+  ).join('');
+}
+
 function refreshInventoryAssumptions(){
   STATE.invAssumptions.leadTimeWeeks = clamp(Number(document.getElementById('invLeadTime').value)||2, 0.5, 8);
   STATE.invAssumptions.serviceLevelPct = Number(document.getElementById('invServiceLevel').value)||95;
   STATE.invAssumptions.coverDaysTarget = clamp(Number(document.getElementById('invCoverDays').value)||14, 3, 60);
   STATE.groups = buildGroups(STATE.raw);
   buildInventoryAnalytics();
+  buildAlerts();
   renderInventoryDiagnostics();
+  renderAlerts();
   renderWhatIf();
   renderRecommendations();
 }
@@ -4520,6 +4692,7 @@ function refreshInventoryAssumptions(){
    RENDER — orchestrator
 ============================================================ */
 function renderAll(){
+  renderAlerts();
   renderKPIs();
   renderPast();
   renderDiagnostic('Store');
