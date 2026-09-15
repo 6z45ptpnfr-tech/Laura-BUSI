@@ -334,7 +334,7 @@
     <!-- ================= 2. DIAGNOSTIC ================= -->
     <section id="diagnostic">
       <div class="section-head"><span class="tag">2 · Diagnostic</span><h2>Why did it happen?</h2></div>
-      <div class="section-sub" style="margin-bottom:16px;">Variance analysis and performance segmentation across stores, regions, categories, formats and inventory health.</div>
+      <div class="section-sub" style="margin-bottom:16px;">Variance analysis and performance segmentation across stores, regions, categories, formats, inventory health, promotional economics and marketing channel return.</div>
 
       <div class="chart-card">
         <div class="flex-between">
@@ -392,6 +392,25 @@
             </div>
           </div>
           <table class="data-table" id="tableROP"></table>
+        </div>
+      </div>
+
+      <div class="chart-card" style="margin-top:14px;">
+        <h3>Price–Demand Elasticity &amp; Discount Impact on Gross Margin</h3>
+        <div class="chart-note">Log-log elasticity of transaction volume to realized price (1 − discount rate), by category; margin impact uses the standard total-revenue test: elastic demand (|E| &gt; 1) means a deeper discount grows revenue and margin, inelastic demand (|E| &lt; 1) means it shrinks both.</div>
+        <div class="grid grid-2">
+          <table class="data-table" id="tableElasticity"></table>
+          <div class="chart-wrap short"><canvas id="chartElasticity"></canvas></div>
+        </div>
+      </div>
+
+      <div class="chart-card" style="margin-top:14px;">
+        <h3>Marketing Attribution &amp; Channel Return</h3>
+        <div class="chart-note">The dataset records one combined marketing spend figure rather than separate digital/in-store ledgers, so channel-level dollar ROAS can't be pulled from ground truth. Blended ROAS below is a real accounting ratio; the lever comparison is a per-category regression estimating the marginal sales value of a modest increase in spend, foot traffic, or online order mix — the fairest way to see which lever is worth the next dollar of effort.</div>
+        <div class="metric-mini-grid" id="mktgMiniStats" style="margin-bottom:14px;"></div>
+        <div class="grid grid-2">
+          <table class="data-table" id="tableMarketing"></table>
+          <div class="chart-wrap short"><canvas id="chartMarketingLevers"></canvas></div>
         </div>
       </div>
     </section>
@@ -522,10 +541,12 @@
         <li>Expense drivers: total labour hours, average hourly wage, average COGS rate, total marketing spend, modelled sales revenue, total rent expense, total utilities expense.</li>
         <li>12-week forward driver values are extrapolated with independent linear trend lines per driver; holiday flags are inferred from historically holiday-flagged week numbers.</li>
         <li>Prediction intervals use ±1.96 × held-out RMSE (approximate 95% interval under a normal error assumption).</li>
-        <li>Inventory Turnover and DSI are estimated: DSI = assumed full-availability stock-cover target (days) ÷ in-stock availability rate; Turnover = 365 ÷ DSI. The raw dataset does not include on-hand inventory dollar values, so this is a transparent proxy, not a ledger figure.</li>
+        <li>Inventory Turnover and DSI are estimated: DSI = assumed full-availability stock-cover target (days) × in-stock availability rate; Turnover = 365 ÷ DSI. The raw dataset does not include on-hand inventory dollar values, so this is a transparent proxy, not a ledger figure.</li>
         <li>Reorder Point and Safety Stock use the classic formula (avg weekly demand × lead time) + (Z × demand std. dev. × √lead time), where weekly transaction count is used as the demand proxy and lead time / service level are user-adjustable assumptions.</li>
         <li>The inventory-availability sales elasticity used in the what-if panel is estimated from a separate store-category-week level regression (which preserves cross-sectional stock variation that is averaged out at network level), not from the main network-level sales model.</li>
         <li>Estimated holding cost assumes a 22%/year inventory carrying-cost rate applied to an estimated average inventory dollar value (COGS run-rate × DSI ÷ 365 × 7); this is an illustrative addition layered on top of — not double-counted within — the historical Total Expense structure.</li>
+        <li>Price–demand elasticity is estimated per category with a log-log regression of transaction volume on realized price (1 − discount rate), fit on store-category-week rows (not weekly network totals, which average away the discount variation needed to identify it). The margin impact of a further +1pp of discount uses the standard total-revenue test (%ΔRevenue ≈ (1+E) × %ΔPrice) rather than a direct regression of margin rate on discount — in this dataset COGS rate is generated independently of discount rate, so margin *rate* has no structural link to discounting and a direct regression of it returns a near-zero, uninformative coefficient.</li>
+        <li>The dataset records one combined Marketing Spend figure rather than separate digital and in-store ad ledgers. Blended ROAS (sales ÷ spend) and the digital/in-store revenue mix (sales weighted by online order share) are real, non-modelled figures. The "highest marginal return" lever comparison is a per-category regression of sales on marketing spend, foot traffic and online order share together — three independently-measured columns, not a spend split — with each lever's dollar value normalized to a modest ~1% (or +1pp) increase so they can be ranked on equal footing.</li>
         <li>What-if scenarios apply slider-adjusted drivers to the same fitted regression coefficients; non-slider drivers are held at their trailing 4-week average.</li>
         <li>Success probabilities use a normal approximation on the distance between the scenario/forecast value and the target, scaled by held-out RMSE, and are floored/capped at &lt;1% / &gt;99% for readability.</li>
       </ul>
@@ -4072,6 +4093,8 @@ function processData(rows){
   buildForecast();
   buildBaseline();
   buildInventoryAnalytics();
+  buildPriceElasticity(rows);
+  buildMarketingAttribution(rows);
 
   const dateSpan = STATE.weekly.length ? (STATE.weekly[0].Week_Start+' → '+STATE.weekly[STATE.weekly.length-1].Week_Start) : '—';
   document.getElementById('filterSummary').textContent =
@@ -4399,6 +4422,107 @@ function buildInventoryAnalytics(){
   };
 }
 
+/* ============================================================
+   PRICE–DEMAND ELASTICITY & DISCOUNT/MARGIN IMPACT (per category)
+   Row-level log-log elasticity: ln(Transactions) ~ ln(1-Discount) + ln(Traffic) + Marketing + CCI + Holiday.
+   Category-pooled aggregates (weekly-network) wash out the cross-sectional discount variation the same
+   way they did for inventory availability, so this is fit on the row-level (store-category-week) data.
+   Margin impact of a further +1pp of discount uses the classic total-revenue test rather than a direct
+   regression of margin-rate on discount: in this dataset COGS_Rate is generated independently of
+   Discount_Rate, so margin *rate* is structurally decoupled from discount and a direct regression of it
+   returns a near-zero, uninformative coefficient — the total-revenue test (revenue rises with a price cut
+   only when |E|>1) is the theoretically correct and numerically stable way to connect elasticity to margin.
+============================================================ */
+function rowsByKey(rows, keyFn){
+  const map = new Map();
+  rows.forEach(r=>{
+    const k = keyFn(r);
+    if(!map.has(k)) map.set(k, []);
+    map.get(k).push(r);
+  });
+  return map;
+}
+
+function buildPriceElasticity(rows){
+  const byCat = rowsByKey(rows, r=>r.Category);
+  const byCategory = [];
+  byCat.forEach((sub, cat)=>{
+    if(sub.length < 30){ return; }
+    const X = sub.map(r=>[1, Math.log(1-clamp(num(r.Discount_Rate),0,0.95)), Math.log(Math.max(1,num(r.Foot_Traffic))), num(r.Marketing_Spend), num(r.Consumer_Confidence_Index), num(r.Holiday_Flag)]);
+    const y = sub.map(r=>Math.log(Math.max(1,num(r.Transactions))));
+    const beta = ols(X, y);
+    const pred = X.map(x=>predictRow(beta,x));
+    const r2 = regressionMetrics(y, pred).r2;
+    const E = beta[1];
+    const avgDiscount = mean(sub.map(r=>num(r.Discount_Rate)));
+    const totalRevenue = sub.reduce((s,r)=>s+num(r.Sales_Revenue),0);
+    const totalCOGS = sub.reduce((s,r)=>s+num(r.COGS_Expense),0);
+    const totalMargin = totalRevenue - totalCOGS;
+    const pctPriceChangeFor1pp = -0.01/(1-avgDiscount);
+    const pctRevenueChangeFor1pp = (1+E)*pctPriceChangeFor1pp;
+    const marginImpactFor1pp = totalMargin*pctRevenueChangeFor1pp;
+    const revenueImpactFor1pp = totalRevenue*pctRevenueChangeFor1pp;
+    const classification = Math.abs(E) > 1.05 ? 'Elastic' : (Math.abs(E) < 0.95 ? 'Inelastic' : 'Unit-Elastic');
+    const verdict = marginImpactFor1pp > totalMargin*0.0005 ? 'Accretive' : (marginImpactFor1pp < -totalMargin*0.0005 ? 'Cannibalizing' : 'Neutral');
+    byCategory.push({ category:cat, n:sub.length, E, r2, avgDiscount, totalRevenue, totalMargin, marginImpactFor1pp, revenueImpactFor1pp, classification, verdict });
+  });
+  byCategory.sort((a,b)=>a.marginImpactFor1pp-b.marginImpactFor1pp);
+  STATE.elasticity = { byCategory };
+}
+
+/* ============================================================
+   MARKETING ATTRIBUTION & CHANNEL RETURN (per category)
+   Blended ROAS is a real accounting ratio (sales ÷ spend). The lever comparison regresses
+   Sales_Revenue on Marketing_Spend, Foot_Traffic and Online_Order_Share jointly (row-level, per
+   category) — these three are independently-measured columns (not a derived split of one another),
+   so unlike a naive spend-by-mix-share split this doesn't manufacture an artificial cancellation.
+   Each lever's marginal $ value is normalized to "a modest ~1% (or +1pp) increase" so three
+   differently-scaled levers can be ranked on the same footing.
+============================================================ */
+function buildMarketingAttribution(rows){
+  const totalSales = rows.reduce((s,r)=>s+num(r.Sales_Revenue),0);
+  const totalMarketing = rows.reduce((s,r)=>s+num(r.Marketing_Spend),0);
+  const digitalRevenue = rows.reduce((s,r)=>s+num(r.Sales_Revenue)*num(r.Online_Order_Share),0);
+  const instoreRevenue = totalSales - digitalRevenue;
+
+  const byCat = rowsByKey(rows, r=>r.Category);
+  const byCategory = [];
+  byCat.forEach((sub, cat)=>{
+    if(sub.length < 30){ return; }
+    const X = sub.map(r=>[1, num(r.Marketing_Spend), num(r.Foot_Traffic), num(r.Online_Order_Share), num(r.Discount_Rate), num(r.Avg_Transaction_Value), num(r.Competitor_Price_Index), num(r.Holiday_Flag)]);
+    const y = sub.map(r=>num(r.Sales_Revenue));
+    const beta = ols(X, y);
+    const pred = X.map(x=>predictRow(beta,x));
+    const r2 = regressionMetrics(y, pred).r2;
+    const avgMarketing = mean(sub.map(r=>num(r.Marketing_Spend)));
+    const avgTraffic = mean(sub.map(r=>num(r.Foot_Traffic)));
+    const catSales = sub.reduce((s,r)=>s+num(r.Sales_Revenue),0);
+    const catMarketing = sub.reduce((s,r)=>s+num(r.Marketing_Spend),0);
+    const marketingLeverValue = beta[1]*(0.01*avgMarketing);
+    const trafficLeverValue = beta[2]*(0.01*avgTraffic);
+    const digitalMixLeverValue = beta[3]*0.01;
+    const levers = [
+      {name:'Marketing Spend (+1%)', value:marketingLeverValue},
+      {name:'Foot Traffic (+1%)', value:trafficLeverValue},
+      {name:'Online Mix (+1pp)', value:digitalMixLeverValue}
+    ];
+    levers.sort((a,b)=>b.value-a.value);
+    byCategory.push({
+      category:cat, n:sub.length, r2, marketingSpend:catMarketing, blendedROAS: catSales/Math.max(1,catMarketing),
+      marketingLeverValue, trafficLeverValue, digitalMixLeverValue, topLever:levers[0].name
+    });
+  });
+  byCategory.sort((a,b)=>b.blendedROAS-a.blendedROAS);
+
+  STATE.marketing = {
+    totalSales, totalMarketing, blendedROAS: totalSales/Math.max(1,totalMarketing),
+    digitalRevenue, instoreRevenue,
+    digitalRevenuePct: digitalRevenue/Math.max(1,totalSales)*100,
+    instoreRevenuePct: instoreRevenue/Math.max(1,totalSales)*100,
+    byCategory
+  };
+}
+
 function refreshInventoryAssumptions(){
   STATE.invAssumptions.leadTimeWeeks = clamp(Number(document.getElementById('invLeadTime').value)||2, 0.5, 8);
   STATE.invAssumptions.serviceLevelPct = Number(document.getElementById('invServiceLevel').value)||95;
@@ -4421,6 +4545,8 @@ function renderAll(){
   renderPast();
   renderDiagnostic('Store');
   renderInventoryDiagnostics();
+  renderElasticityDiagnostics();
+  renderMarketingDiagnostics();
   renderPredictive();
   renderUncertainty();
   renderSliders();
@@ -4622,6 +4748,74 @@ function renderInventoryDiagnostics(){
     ropHtml += '<tr><td>'+c.category+'</td><td>'+fmtNum(c.demandMean)+'</td><td>'+fmtNum(c.demandStd)+'</td><td>'+fmtNum(c.safetyStock)+'</td><td>'+fmtNum(c.rop)+'</td></tr>';
   });
   document.getElementById('tableROP').innerHTML = ropHtml;
+}
+
+let chartElasticity;
+function renderElasticityDiagnostics(){
+  const data = STATE.elasticity.byCategory;
+  if(!data.length){
+    document.getElementById('tableElasticity').innerHTML = '<tr><td>Not enough rows in the current filter to estimate category-level elasticity.</td></tr>';
+    chartElasticity && chartElasticity.destroy();
+    return;
+  }
+  let html = '<tr><th>Category</th><th>Elasticity (E)</th><th>Type</th><th>Avg Discount</th><th>Margin Δ per +1pp Discount</th><th>Verdict</th></tr>';
+  data.forEach(c=>{
+    html += '<tr><td>'+c.category+'</td><td>'+c.E.toFixed(2)+'</td><td>'+c.classification+'</td><td>'+(c.avgDiscount*100).toFixed(1)+'%</td>'+
+      '<td>'+(c.marginImpactFor1pp>=0?'+':'')+fmtCompact(c.marginImpactFor1pp)+'</td>'+
+      '<td><span class="pill-sm '+(c.verdict==='Accretive'?'good':c.verdict==='Cannibalizing'?'bad':'')+'">'+c.verdict+'</span></td></tr>';
+  });
+  document.getElementById('tableElasticity').innerHTML = html;
+
+  const sorted = [...data].sort((a,b)=>b.marginImpactFor1pp-a.marginImpactFor1pp);
+  chartElasticity && chartElasticity.destroy();
+  chartElasticity = new Chart(document.getElementById('chartElasticity'), {
+    type:'bar',
+    data:{labels: sorted.map(c=>c.category), datasets:[{label:'Margin Δ per +1pp Discount', data: sorted.map(c=>c.marginImpactFor1pp), backgroundColor: sorted.map(c=>c.marginImpactFor1pp>=0?'#0f9d63':'#d0392c'), borderRadius:4}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>fmtCompact(ctx.parsed.y)}}},
+      scales:{y:{ticks:{callback:v=>fmtCompact(v)}, grid:{color:'#eef1f6'}}, x:{grid:{display:false}}}
+    }
+  });
+}
+
+let chartMarketingLevers;
+function renderMarketingDiagnostics(){
+  const m = STATE.marketing;
+  document.getElementById('mktgMiniStats').innerHTML = [
+    ['Blended ROAS (Network)', m.blendedROAS.toFixed(2)+'x'],
+    ['Digital-Attributed Revenue', fmtCompact(m.digitalRevenue)+' ('+m.digitalRevenuePct.toFixed(0)+'%)'],
+    ['In-Store-Attributed Revenue', fmtCompact(m.instoreRevenue)+' ('+m.instoreRevenuePct.toFixed(0)+'%)'],
+    ['Total Marketing Spend', fmtCompact(m.totalMarketing)]
+  ].map(([l,v])=>'<div class="metric-mini"><div class="mm-label">'+l+'</div><div class="mm-value">'+v+'</div></div>').join('');
+
+  if(!m.byCategory.length){
+    document.getElementById('tableMarketing').innerHTML = '<tr><td>Not enough rows in the current filter to estimate lever values.</td></tr>';
+    chartMarketingLevers && chartMarketingLevers.destroy();
+    return;
+  }
+  let html = '<tr><th>Category</th><th>Blended ROAS</th><th>+1% Marketing</th><th>+1% Foot Traffic</th><th>+1pp Online Mix</th><th>Top Lever</th></tr>';
+  m.byCategory.forEach(c=>{
+    html += '<tr><td>'+c.category+'</td><td>'+c.blendedROAS.toFixed(2)+'x</td><td>'+fmtCompact(c.marketingLeverValue)+'</td>'+
+      '<td>'+fmtCompact(c.trafficLeverValue)+'</td><td>'+fmtCompact(c.digitalMixLeverValue)+'</td>'+
+      '<td><b>'+c.topLever+'</b></td></tr>';
+  });
+  document.getElementById('tableMarketing').innerHTML = html;
+
+  chartMarketingLevers && chartMarketingLevers.destroy();
+  chartMarketingLevers = new Chart(document.getElementById('chartMarketingLevers'), {
+    type:'bar',
+    data:{labels: m.byCategory.map(c=>c.category), datasets:[
+      {label:'+1% Marketing Spend', data: m.byCategory.map(c=>c.marketingLeverValue), backgroundColor:'#8695ab', borderRadius:4},
+      {label:'+1% Foot Traffic', data: m.byCategory.map(c=>c.trafficLeverValue), backgroundColor:'#2857c9', borderRadius:4},
+      {label:'+1pp Online Mix', data: m.byCategory.map(c=>c.digitalMixLeverValue), backgroundColor:'#7b4fd6', borderRadius:4}
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom', labels:{boxWidth:12, usePointStyle:true}}, tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fmtCompact(ctx.parsed.y)}}},
+      scales:{y:{ticks:{callback:v=>fmtCompact(v)}, grid:{color:'#eef1f6'}}, x:{grid:{display:false}}}
+    }
+  });
 }
 
 /* ---------- 3. PREDICTIVE ---------- */
@@ -4872,14 +5066,34 @@ function renderRecommendations(){
     target: 'Reduce network-average COGS rate by '+clamp(cogsGapPP*0.5,0.3,5).toFixed(1)+'pp (halfway to the '+bestCOGSCat.key+' benchmark) within 2 quarters.'
   });
 
-  /* 4. Marketing efficiency / CAC */
+  /* 3b. Price-demand elasticity & discount/margin cannibalization */
+  const elas = STATE.elasticity.byCategory;
+  if(elas.length){
+    const worstElas = elas[0], bestElas = elas[elas.length-1];
+    recs.push({
+      type: worstElas.verdict==='Cannibalizing'?'urgent':(worstElas.verdict==='Neutral'?'neutral':'positive'), icon:'🏷️', tag:'Pricing', title:'Discount Elasticity &amp; Margin Cannibalization',
+      insight: worstElas.category+' has an estimated price elasticity of '+worstElas.E.toFixed(2)+' ('+worstElas.classification+'): at a '+(worstElas.avgDiscount*100).toFixed(1)+'% average discount, a further +1pp of discount is projected to change gross margin by '+fmtCompact(worstElas.marginImpactFor1pp)+' ('+worstElas.verdict+') — the volume lift is not big enough to pay for the price cut. '+bestElas.category+', by contrast, is '+bestElas.classification.toLowerCase()+' (E='+bestElas.E.toFixed(2)+'), where an extra +1pp of discount is projected to add '+fmtCompact(bestElas.marginImpactFor1pp)+' in margin through genuine incremental volume.',
+      action: 'Pull back discount depth in '+worstElas.category+' (and any other category flagged "Cannibalizing" above) toward everyday pricing, and reinvest that promotional budget into '+bestElas.category+' where discounting is demonstrably accretive to margin, not just volume.',
+      target: 'Reduce '+worstElas.category+' average discount rate by 2pp within 6 weeks (recovering ≈'+fmtCompact(Math.abs(worstElas.marginImpactFor1pp)*2)+' in margin at the current elasticity) while holding '+bestElas.category+' promotional cadence steady or increasing it.'
+    });
+  }
+
+  /* 4. Marketing efficiency / CAC + lever allocation */
   const cac = totalMarketing/Math.max(1,totalTransactions);
   const cacTarget = cac*0.9;
+  const mktg = STATE.marketing;
+  let leverNote = '';
+  if(mktg.byCategory.length){
+    const leverCounts = {};
+    mktg.byCategory.forEach(c=>{ leverCounts[c.topLever] = (leverCounts[c.topLever]||0)+1; });
+    const topLeverOverall = Object.keys(leverCounts).sort((a,b)=>leverCounts[b]-leverCounts[a])[0];
+    leverNote = ' A per-category lever comparison (see the Marketing Attribution card above) shows "'+topLeverOverall+'" delivers the highest marginal sales return in '+leverCounts[topLeverOverall]+' of '+mktg.byCategory.length+' categories — ahead of simply spending more on marketing.';
+  }
   recs.push({
-    type:'neutral', icon:'📣', tag:'Marketing', title:'Customer Acquisition Cost',
-    insight: 'Estimated customer acquisition cost (marketing spend ÷ transactions) is $'+cac.toFixed(2)+' per transaction ('+fmtCompact(totalMarketing)+' spent against '+fmtNum(totalTransactions)+' transactions).',
-    action: 'Shift spend toward the channels/stores with the lowest realized CAC (use the store-level diagnostic table above to identify them) and cap discount depth on already high-converting baskets.',
-    target: 'Cap customer acquisition cost at $'+cacTarget.toFixed(2)+' per transaction (a 10% improvement) within 8 weeks.'
+    type:'neutral', icon:'📣', tag:'Marketing', title:'Marketing Budget Allocation &amp; CAC',
+    insight: 'Estimated customer acquisition cost is $'+cac.toFixed(2)+' per transaction ('+fmtCompact(totalMarketing)+' spent against '+fmtNum(totalTransactions)+' transactions), for a blended ROAS of '+mktg.blendedROAS.toFixed(2)+'x network-wide ('+fmtCompact(mktg.digitalRevenue)+' / '+mktg.digitalRevenuePct.toFixed(0)+'% of revenue transacted online vs '+fmtCompact(mktg.instoreRevenue)+' / '+mktg.instoreRevenuePct.toFixed(0)+'% in-store).'+leverNote,
+    action: 'Before adding raw marketing budget, fund the highest-return lever identified per category above (traffic-driving tactics — local ads, curbside/pickup promotions — or an online-mix push where that lever wins) and shift spend away from the lowest-realized-CAC store/category combinations only after that reallocation.',
+    target: 'Cap customer acquisition cost at $'+cacTarget.toFixed(2)+' per transaction (a 10% improvement) within 8 weeks while holding blended ROAS at or above '+mktg.blendedROAS.toFixed(2)+'x.'
   });
 
   /* 5. Inventory health */
